@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "gemini-literature-discovery": {
+      "command": "python",
+      "args": [
+        "mcp_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": ".",
+        "LOG_LEVEL": "INFO",
+        "GEMINI_MODEL": "gemini-2.5-flash"
+      },
+      "description": "Gemini 2.5 Flash powered literature discovery and management server"
+    }
+  }
+}
