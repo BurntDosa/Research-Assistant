@@ -5,7 +5,7 @@ Literature Discovery MCP Server - Gemini 2.5 Flash Native Edition
 
 Advanced Model Context Protocol server for managing academic papers discovered
 by the Gemini-powered Literature Discovery Agent. Features intelligent storage,
-retrieval, analysis, and organization capabilities.
+retrieval, analysis, and organization capabilities with FAISS vector database integration.
 """
 
 import asyncio
@@ -38,6 +38,14 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Import our embedding agent for FAISS integration
+try:
+    from embedding_agent import EmbeddingAgent, EmbeddedPaper
+    EMBEDDING_AVAILABLE = True
+except ImportError:
+    EMBEDDING_AVAILABLE = False
+    logger.warning("Embedding agent not available. Vector search features disabled.")
 
 # Enhanced data models for Gemini integration
 class GeminiPaper(BaseModel):
@@ -102,11 +110,20 @@ class SearchFilters(BaseModel):
     collections: Optional[List[int]] = Field(default=None, description="Filter by collections")
 
 class GeminiLiteratureDatabase:
-    """Advanced database manager optimized for Gemini literature discovery"""
+    """Advanced database manager optimized for Gemini literature discovery with FAISS integration"""
 
     def __init__(self, db_path: str = "gemini_mcp_literature.db"):
         self.db_path = db_path
         self.init_database()
+        
+        # Initialize embedding agent if available
+        if EMBEDDING_AVAILABLE:
+            self.embedding_agent = EmbeddingAgent("mcp_faiss_embeddings")
+            logger.info("FAISS vector database integration enabled")
+        else:
+            self.embedding_agent = None
+            logger.info("FAISS vector database integration disabled")
+            
         logger.info(f"Gemini Literature MCP Database initialized at {db_path}")
 
     def init_database(self):
@@ -820,6 +837,53 @@ async def handle_list_tools() -> List[Tool]:
                     "include_analysis": {"type": "boolean", "description": "Include Gemini analysis", "default": True}
                 }
             }
+        ),
+        Tool(
+            name="vector_search_papers",
+            description="Search papers using FAISS vector similarity (if available)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query for vector similarity"},
+                    "k": {"type": "integer", "description": "Number of results to return", "default": 20},
+                    "paper_type_filter": {"type": "string", "enum": ["review", "conference", "journal"], "description": "Filter by paper type", "optional": True}
+                },
+                "required": ["query"]
+            }
+        ),
+        Tool(
+            name="add_papers_to_vector_db",
+            description="Add a batch of papers to the FAISS vector database",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "papers": {"type": "array", "items": {"type": "object"}, "description": "List of paper objects to add"},
+                    "session_id": {"type": "string", "description": "Session ID for tracking"},
+                    "search_query": {"type": "string", "description": "Original search query"}
+                },
+                "required": ["papers", "session_id", "search_query"]
+            }
+        ),
+        Tool(
+            name="get_vector_database_stats",
+            description="Get comprehensive statistics about the FAISS vector database",
+            inputSchema={
+                "type": "object",
+                "properties": {}
+            }
+        ),
+        Tool(
+            name="execute_research_pipeline",
+            description="Execute the full two-phase research pipeline (48 papers → top 20)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Research query"},
+                    "paper_type_preference": {"type": "string", "enum": ["review", "conference", "journal"], "description": "Preferred paper type", "optional": True},
+                    "filters": {"type": "object", "description": "Advanced search filters", "optional": True}
+                },
+                "required": ["query"]
+            }
         )
     ]
 
@@ -939,6 +1003,97 @@ async def handle_call_tool(name: str, arguments: dict) -> List[TextContent]:
             return [TextContent(
                 type="text",
                 text=f"Export completed ({len(papers)} papers):\n{export_text}"
+            )]
+
+        elif name == "vector_search_papers":
+            if not EMBEDDING_AVAILABLE or not database.embedding_agent:
+                return [TextContent(
+                    type="text",
+                    text="Vector search not available: FAISS/embedding agent not initialized"
+                )]
+
+            query = arguments.get("query", "")
+            k = arguments.get("k", 20)
+            paper_type_filter = arguments.get("paper_type_filter")
+
+            similar_papers = database.embedding_agent.search_papers(query, k, paper_type_filter)
+
+            return [TextContent(
+                type="text",
+                text=f"Vector search results ({len(similar_papers)} papers):\n" + json.dumps([
+                    {
+                        "paper_id": p.paper_id,
+                        "title": p.title,
+                        "similarity_score": p.similarity_score,
+                        "paper_type": p.paper_type,
+                        "relevance_score": p.relevance_score,
+                        "journal": p.journal
+                    } for p in similar_papers
+                ], indent=2)
+            )]
+
+        elif name == "add_papers_to_vector_db":
+            if not EMBEDDING_AVAILABLE or not database.embedding_agent:
+                return [TextContent(
+                    type="text",
+                    text="Vector database not available: FAISS/embedding agent not initialized"
+                )]
+
+            papers = arguments.get("papers", [])
+            session_id = arguments.get("session_id", "")
+            search_query = arguments.get("search_query", "")
+
+            embedded_papers = database.embedding_agent.process_paper_batch(papers, search_query, session_id)
+
+            return [TextContent(
+                type="text",
+                text=f"Added {len(embedded_papers)} papers to vector database for session {session_id}"
+            )]
+
+        elif name == "get_vector_database_stats":
+            if not EMBEDDING_AVAILABLE or not database.embedding_agent:
+                return [TextContent(
+                    type="text",
+                    text="Vector database not available: FAISS/embedding agent not initialized"
+                )]
+
+            stats = database.embedding_agent.get_statistics()
+
+            return [TextContent(
+                type="text",
+                text=f"Vector Database Statistics:\n" + json.dumps(stats, indent=2)
+            )]
+
+        elif name == "execute_research_pipeline":
+            if not EMBEDDING_AVAILABLE:
+                return [TextContent(
+                    type="text",
+                    text="Research pipeline not available: embedding components not initialized"
+                )]
+
+            from control_agent import ResearchPipeline, SearchFilters
+            
+            query = arguments.get("query", "")
+            paper_type_preference = arguments.get("paper_type_preference")
+            filters_dict = arguments.get("filters", {})
+            
+            # Create filters object
+            filters = SearchFilters(**filters_dict) if filters_dict else None
+            
+            # Execute pipeline
+            pipeline = ResearchPipeline()
+            results = pipeline.execute_full_pipeline(query, filters, paper_type_preference)
+
+            return [TextContent(
+                type="text",
+                text=f"Research Pipeline Results:\n" + json.dumps({
+                    "session_id": results["session_id"],
+                    "query": results["query"],
+                    "total_unique_papers": results["total_unique_papers"],
+                    "top_papers_count": len(results["top_papers"]),
+                    "pipeline_duration": results["pipeline_duration"],
+                    "statistics": results["statistics"]
+                }, indent=2)
             )]
 
         else:
