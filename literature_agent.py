@@ -120,12 +120,19 @@ class SearchFilters(BaseModel):
     author_filter: Optional[List[str]] = Field(default=None)
     keyword_requirements: Optional[List[str]] = Field(default=None)
     exclude_keywords: Optional[List[str]] = Field(default=None)
+    paper_type_filter: Optional[str] = Field(default=None, description="Filter by paper type: 'review', 'conference', or 'journal'")
 
     @validator('year_end')
     def validate_year_range(cls, v, values):
         if v is not None and 'year_start' in values and values['year_start'] is not None:
             if v < values['year_start']:
                 raise ValueError('year_end must be >= year_start')
+        return v
+    
+    @validator('paper_type_filter')
+    def validate_paper_type(cls, v):
+        if v is not None and v not in ['review', 'conference', 'journal']:
+            raise ValueError('paper_type_filter must be one of: review, conference, journal')
         return v
 
 class GeminiLiteratureDatabase:
@@ -308,8 +315,8 @@ class GeminiLiteratureDatabase:
                 doi=row[10],
                 keywords=json.loads(row[11]) if row[11] else [],
                 categories=json.loads(row[12]) if row[12] else [],
-                relevance_score=row[13],
-                confidence_score=row[14],
+                relevance_score=row[13] if row[13] is not None else 0.0,
+                confidence_score=row[14] if row[14] is not None else 0.0,
                 selected=bool(row[15]),
                 source=row[17]
             )
@@ -921,9 +928,13 @@ class GeminiPaperScraper:
                 params["as_ylo"] = filters.year_start or 1900
                 params["as_yhi"] = filters.year_end or 2030
             
-            # Execute search
-            search = GoogleSearch(params)
-            results = search.get_dict()
+            # Execute search with error handling
+            try:
+                search = GoogleSearch(params)
+                results = search.get_dict()
+            except Exception as e:
+                logger.error(f"SerpAPI request failed: {e}")
+                return papers
             
             # Check for errors
             if "error" in results:
@@ -1376,6 +1387,12 @@ class GeminiLiteratureDiscoveryAgent:
 
         # Multi-source search with sequential execution - using reliable sources
         all_papers = []
+        source_stats = {
+            'attempted': 0,
+            'successful': 0,
+            'failed': 0,
+            'failed_sources': []
+        }
         
         # Execute searches sequentially with delays to be respectful to APIs
         sources = [
@@ -1386,14 +1403,35 @@ class GeminiLiteratureDiscoveryAgent:
         ]
         
         for source_name, search_func in sources:
+            source_stats['attempted'] += 1
+            
             try:
                 logger.info(f"Searching {source_name}...")
-                papers = await asyncio.to_thread(
-                    search_func, 
-                    query, search_filters, max_results // 4 + 3  # Distribute across 4 sources
-                )
-                all_papers.extend(papers)
-                logger.info(f"{source_name}: found {len(papers)} papers")
+                
+                # Add timeout mechanism for individual sources
+                try:
+                    # For very small max_results, use 1 paper per source
+                    papers_per_source = 1 if max_results <= 4 else max_results // 4 + 3
+                    papers = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            search_func, 
+                            query, search_filters, papers_per_source
+                        ),
+                        timeout=45.0  # 45 second timeout per source
+                    )
+                    
+                    if papers:
+                        all_papers.extend(papers)
+                        source_stats['successful'] += 1
+                        logger.info(f"{source_name}: found {len(papers)} papers")
+                    else:
+                        logger.warning(f"{source_name}: returned no papers")
+                        
+                except asyncio.TimeoutError:
+                    logger.warning(f"{source_name}: timed out after 45 seconds, skipping...")
+                    source_stats['failed'] += 1
+                    source_stats['failed_sources'].append(f"{source_name} (timeout)")
+                    continue
                 
                 # Small delay between API calls to be respectful
                 if source_name != 'arxiv':  # No delay after last source
@@ -1401,7 +1439,21 @@ class GeminiLiteratureDiscoveryAgent:
                     
             except Exception as e:
                 logger.error(f"{source_name} search failed: {e}")
+                source_stats['failed'] += 1
+                source_stats['failed_sources'].append(f"{source_name} (error)")
                 continue
+
+        # Log search statistics
+        logger.info(f"Source search completed: {source_stats['successful']}/{source_stats['attempted']} sources successful")
+        if source_stats['failed_sources']:
+            logger.warning(f"Failed sources: {', '.join(source_stats['failed_sources'])}")
+        
+        # Check if we have any papers at all
+        if not all_papers:
+            logger.error("No papers found from any source - all sources failed")
+            if source_stats['failed'] == source_stats['attempted']:
+                logger.error("All sources failed - this might indicate API issues or network problems")
+            return []
 
         # Remove duplicates intelligently
         unique_papers = self._advanced_deduplication(all_papers)
@@ -1470,14 +1522,16 @@ class GeminiLiteratureDiscoveryAgent:
         validation_round = 1
         max_validation_rounds = 3
         
-        while (len([p for p in all_validated_papers if p.relevance_score >= min_relevance_threshold]) < target_high_quality_papers 
+        while (len([p for p in all_validated_papers 
+                   if p.relevance_score is not None and p.relevance_score >= min_relevance_threshold]) < target_high_quality_papers 
                and validation_round <= max_validation_rounds 
                and len(processed_papers) < len(papers_to_validate)):
             
-            logger.info(f"Quality assurance round {validation_round}: Need {target_high_quality_papers - len([p for p in all_validated_papers if p.relevance_score >= min_relevance_threshold])} more high-quality papers")
+            logger.info(f"Quality assurance round {validation_round}: Need {target_high_quality_papers - len([p for p in all_validated_papers if p.relevance_score is not None and p.relevance_score >= min_relevance_threshold])} more high-quality papers")
             
             # Determine how many papers to validate in this round
-            current_high_quality = len([p for p in all_validated_papers if p.relevance_score >= min_relevance_threshold])
+            current_high_quality = len([p for p in all_validated_papers 
+                                      if p.relevance_score is not None and p.relevance_score >= min_relevance_threshold])
             needed_papers = target_high_quality_papers - current_high_quality
             
             # Take more papers in early rounds to account for potential low relevance
@@ -1521,8 +1575,9 @@ class GeminiLiteratureDiscoveryAgent:
             # Process validation results for this round
             for paper, validation_result in zip(papers_for_validation, validation_results):
                 if hasattr(validation_result, 'relevance_score'):
-                    paper.relevance_score = validation_result.relevance_score
-                    paper.confidence_score = validation_result.confidence_score
+                    # Safely assign scores with None protection
+                    paper.relevance_score = validation_result.relevance_score if validation_result.relevance_score is not None else 0.3
+                    paper.confidence_score = validation_result.confidence_score if validation_result.confidence_score is not None else 0.2
                     paper.gemini_reasoning = getattr(validation_result, 'reasoning', 'No reasoning available')
                     paper.key_matches = getattr(validation_result, 'key_matches', [])
                     paper.concerns = getattr(validation_result, 'concerns', [])
@@ -1548,33 +1603,46 @@ class GeminiLiteratureDiscoveryAgent:
                 )
             
             # Check quality after this round
-            current_high_quality_papers = [p for p in all_validated_papers if p.relevance_score >= min_relevance_threshold]
+            current_high_quality_papers = [p for p in all_validated_papers 
+                                         if p.relevance_score is not None and p.relevance_score >= min_relevance_threshold]
             logger.info(f"After round {validation_round}: {len(current_high_quality_papers)} high-quality papers (≥{min_relevance_threshold})")
             
             validation_round += 1
 
-        # Final selection: prioritize high-quality papers
-        high_quality_papers = [p for p in all_validated_papers if p.relevance_score >= min_relevance_threshold]
+        # Final selection: prioritize high-quality papers (safely handling None values)
+        high_quality_papers = [p for p in all_validated_papers 
+                             if p.relevance_score is not None and p.relevance_score >= min_relevance_threshold]
         remaining_slots = max(0, target_high_quality_papers - len(high_quality_papers))
         
         if remaining_slots > 0:
             # Fill remaining slots with best available papers (even if below threshold)
-            lower_quality_papers = [p for p in all_validated_papers if p.relevance_score < min_relevance_threshold]
-            lower_quality_papers.sort(key=lambda x: x.relevance_score, reverse=True)
+            lower_quality_papers = [p for p in all_validated_papers 
+                                  if p.relevance_score is None or p.relevance_score < min_relevance_threshold]
+            # Sort safely with None handling
+            lower_quality_papers.sort(key=lambda x: x.relevance_score if x.relevance_score is not None else 0.0, 
+                                    reverse=True)
             high_quality_papers.extend(lower_quality_papers[:remaining_slots])
             
-        # Sort final results by relevance score
+        # Sort final results by relevance score (safely handling None values)
+        def safe_sort_key(paper):
+            relevance = paper.relevance_score if paper.relevance_score is not None else 0.0
+            confidence = paper.confidence_score if paper.confidence_score is not None else 0.0
+            citations = paper.citation_count if paper.citation_count is not None else 0
+            return (relevance, confidence, citations)
+            
         validated_papers = sorted(high_quality_papers[:target_high_quality_papers], 
-                                key=lambda x: (x.relevance_score, x.confidence_score, x.citation_count), 
+                                key=safe_sort_key, 
                                 reverse=True)
         
         logger.info(f"Final selection: {len(validated_papers)} papers, "
-                   f"{len([p for p in validated_papers if p.relevance_score >= min_relevance_threshold])} high-quality (≥{min_relevance_threshold})")
+                   f"{len([p for p in validated_papers if p.relevance_score is not None and p.relevance_score >= min_relevance_threshold])} high-quality (≥{min_relevance_threshold})")
 
         # Update session statistics
         if validated_papers:
-            avg_relevance = sum(p.relevance_score for p in validated_papers) / len(validated_papers)
-            search_duration = time.time() - self.search_start_time
+            # Safe calculation of average relevance score
+            valid_scores = [p.relevance_score for p in validated_papers if p.relevance_score is not None]
+            avg_relevance = sum(valid_scores) / len(valid_scores) if valid_scores else 0.0
+            search_duration = time.time() - self.search_start_time if self.search_start_time is not None else 0.0
             self.database.update_session_stats(
                 self.session_id, len(validated_papers), 0, avg_relevance, search_duration
             )
@@ -1584,7 +1652,14 @@ class GeminiLiteratureDiscoveryAgent:
 
     def search_papers(self, query: str, filters: Optional[Dict[str, Any]] = None, max_results: int = 15) -> List[Paper]:
         """Synchronous wrapper for async paper search"""
-        return asyncio.run(self.search_papers_async(query, filters, max_results))
+        try:
+            return asyncio.run(self.search_papers_async(query, filters, max_results))
+        except Exception as e:
+            # Add detailed traceback for debugging
+            import traceback
+            logger.error(f"Error in search_papers: {e}")
+            logger.debug(f"Full traceback: {traceback.format_exc()}")
+            return []
 
     def _advanced_deduplication(self, papers: List[Paper]) -> List[Paper]:
         """Advanced deduplication using multiple similarity metrics"""
@@ -1666,7 +1741,9 @@ class GeminiLiteratureDiscoveryAgent:
         # Update session statistics
         if selected_papers:
             total_selected = len([p for p in papers if p.selected])
-            avg_relevance = sum(p.relevance_score for p in papers) / len(papers)
+            # Safe calculation of average relevance score
+            valid_scores = [p.relevance_score for p in papers if p.relevance_score is not None]
+            avg_relevance = sum(valid_scores) / len(valid_scores) if valid_scores else 0.0
             search_duration = time.time() - self.search_start_time if self.search_start_time else 0
 
             self.database.update_session_stats(
@@ -1735,8 +1812,13 @@ class GeminiLiteratureDiscoveryAgent:
         selected_ids = {p.paper_id for p in selected_papers}
         new_similar = [p for p in unique_similar if p.paper_id not in selected_ids]
 
-        # Sort by relevance and return top results
-        new_similar.sort(key=lambda x: (x.relevance_score, x.confidence_score), reverse=True)
+        # Sort by relevance and return top results (safely handling None values)
+        def safe_sort_key(paper):
+            relevance = paper.relevance_score if paper.relevance_score is not None else 0.0
+            confidence = paper.confidence_score if paper.confidence_score is not None else 0.0
+            return (relevance, confidence)
+        
+        new_similar.sort(key=safe_sort_key, reverse=True)
         result = new_similar[:max_results]
 
         logger.info(f"Found {len(result)} similar papers")
