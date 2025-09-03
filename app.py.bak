@@ -16,28 +16,10 @@ from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 load_dotenv()
 
-# Import components
+# Import enhanced control agent
+from enhanced_control_agent import EnhancedResearchPipeline, UserSelectionDatabase
 from literature_agent import SearchFilters
 from embedding_agent import EmbeddingAgent
-from control_agent import EnhancedResearchPipeline
-from literature_review_agents import LiteratureReviewCoordinator
-from ui_components import render_literature_review_section
-
-# Initialize session state for literature review related state
-if 'literature_review' not in st.session_state:
-    st.session_state.literature_review = None
-if 'generating_review' not in st.session_state:
-    st.session_state.generating_review = False
-
-# Initialize session state for search related state
-if 'pipeline' not in st.session_state:
-    st.session_state.pipeline = None
-if 'pipeline_results' not in st.session_state:
-    st.session_state.pipeline_results = None
-if 'search_iterations' not in st.session_state:
-    st.session_state.search_iterations = 0
-if 'augmented_queries' not in st.session_state:
-    st.session_state.augmented_queries = []
 
 # Configure Streamlit page
 st.set_page_config(
@@ -744,20 +726,18 @@ def display_modern_papers(papers: List):
             paper_type = paper.get('paper_type', 'unknown')
             similarity_score = paper.get('similarity_score', 0)
             relevance_score = paper.get('relevance_score', 0)
-            journal = paper.get('journal', '')
         else:
             title = getattr(paper, 'title', 'Unknown Title')
             paper_type = getattr(paper, 'paper_type', 'unknown')
             similarity_score = getattr(paper, 'similarity_score', 0)
             relevance_score = getattr(paper, 'relevance_score', 0)
-            journal = getattr(paper, 'journal', '')
         
         # Paper type badge with color coding - improved classification
         # Try to infer paper type from title and journal if not explicitly set
         inferred_type = paper_type
         if paper_type == 'unknown':
             title_lower = title.lower()
-            journal_lower = journal.lower()
+            journal_lower = journal.lower() if journal else ''
             
             # Check for review indicators
             if any(word in title_lower for word in ['review', 'survey', 'overview', 'state of the art']):
