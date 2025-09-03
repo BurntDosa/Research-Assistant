@@ -57,6 +57,13 @@ pip install -r requirements.txt
 
 3. **Set up environment variables**
 ```bash
+# Copy the example file and edit with your values
+cp .env.example .env
+# Edit .env with your actual API key and email
+```
+
+Or create manually:
+```bash
 # Create .env file
 echo "GOOGLE_API_KEY=your_gemini_api_key_here" > .env
 echo "RESEARCH_EMAIL=your_email@example.com" >> .env
@@ -68,6 +75,25 @@ streamlit run app.py
 ```
 
 The application will open in your browser at `http://localhost:8501`
+
+### Verification
+
+You can verify your installation by running:
+```bash
+# Check Python environment
+python -c "import streamlit, pandas, requests; print('✅ Core dependencies installed')"
+
+# Verify file structure
+python -c "
+import os
+required_files = ['app.py', 'control_agent.py', 'literature_agent.py', 'embedding_agent.py']
+missing = [f for f in required_files if not os.path.exists(f)]
+if not missing:
+    print('✅ All core files present')
+else:
+    print(f'❌ Missing files: {missing}')
+"
+```
 
 ## 🔧 Configuration
 
