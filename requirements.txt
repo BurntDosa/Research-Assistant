@@ -1,49 +1,36 @@
 
-# Core dependencies for Gemini-native Literature Discovery Agent
-streamlit>=1.25.0
-langchain>=0.2.0
-langchain-google-genai>=1.0.0
-langgraph>=0.1.0
-langchain-community>=0.2.0
+############################################################
+# Minimal, correct dependencies for this codebase (Py 3.11)
+############################################################
 
-# Google Gemini API - Native integration
-google-generativeai>=0.8.0
-google-ai-generativelanguage>=0.6.0
+# App/UI
+streamlit>=1.29,<2
+python-dotenv>=1.0,<2
 
-# Web scraping and data retrieval
-scholarly>=1.7.0
-beautifulsoup4>=4.12.0
-requests>=2.31.0
-selenium>=4.15.0
-httpx>=0.25.0
+# Google Gemini + LangChain
+google-generativeai>=0.8,<1
+langchain>=0.2.7,<0.3
+langchain-google-genai>=1.0.2,<1.1
 
-# Data processing and analysis
-pandas>=2.0.0
-numpy>=1.24.0
-python-dotenv>=1.0.0
+# Data & parsing
+pandas>=2.2,<3
+numpy>=1.26,<3
+requests>=2.31,<3
+beautifulsoup4>=4.12,<5
+pydantic>=2.6,<3
+tenacity>=8.2,<9
 
-# MCP server components
-mcp>=1.0.0
+# Async helpers
+aiohttp>=3.9,<4
+asyncio-throttle>=1.0.2,<2
+anyio>=4.0,<5
 
-# Academic paper APIs
-arxiv>=2.1.0
-crossref-commons>=0.0.7
+# PDF text extraction (the correct package for `import fitz` is PyMuPDF)
+PyMuPDF>=1.24,<1.25
 
-# Utilities and validation
-pydantic>=2.5.0
-tenacity>=8.2.0
+# MCP server (already present in venv; keep unpinned to avoid resolver issues)
+mcp
 
-# Visualization and UI
-plotly>=5.15.0
-altair>=5.0.0
-
-# Google Colab compatibility
-ipywidgets>=8.0.0
-
-# Async support for better performance
-aiohttp>=3.9.0
-asyncio-throttle>=1.0.2
-
-# Vector database and embeddings
-faiss-cpu>=1.7.4
-sentence-transformers>=2.2.0
+# Optional: FAISS for vector search. On some macOS/ARM systems, wheels may be unavailable.
+# If installation fails, comment this line out; the app degrades gracefully without FAISS.
+# faiss-cpu>=1.7.4

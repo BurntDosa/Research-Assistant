@@ -10,6 +10,11 @@ import logging
 import json
 import pickle
 import numpy as np
+import requests
+import fitz  # PyMuPDF
+import re
+from urllib.parse import urljoin
+from bs4 import BeautifulSoup
 try:
     import faiss
 except ImportError:
@@ -20,6 +25,140 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple, Union
 from dataclasses import dataclass, asdict
 import uuid
+
+# Configure email for API politeness
+RESEARCH_EMAIL = os.getenv("RESEARCH_EMAIL", "research@example.com")
+
+def _scrape_for_pdf_url(doi: str) -> Optional[str]:
+    """Scrape publisher's page for PDF link"""
+    try:
+        doi_url = f"https://doi.org/{doi}"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        
+        logger.info(f"Scraping landing page: {doi_url}")
+        response = requests.get(doi_url, headers=headers, timeout=15, allow_redirects=True)
+        response.raise_for_status()
+        
+        publisher_url = response.url
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Try meta tag first
+        meta_tag = soup.find('meta', attrs={'name': re.compile(r'citation_pdf_url', re.I)})
+        if meta_tag and meta_tag.has_attr('content'):
+            return meta_tag['content']
+
+        # Try direct PDF links
+        all_links = soup.find_all('a', href=True)
+        for link in all_links:
+            href = link['href'].lower()
+            # Direct PDF files
+            if href.endswith('.pdf') or '.pdf?' in href:
+                return urljoin(publisher_url, link['href'])
+            # PDF in path
+            if any(substring in href for substring in ['/pdf/', '/content/', 'fulltext', '/epdf/']):
+                return urljoin(publisher_url, link['href'])
+            # Check link text and attributes
+            if re.search(r'download|pdf|full.?text', link.get_text(), re.I):
+                return urljoin(publisher_url, link['href'])
+                
+        return None
+
+    except Exception as e:
+        logger.error(f"Error scraping for PDF: {str(e)}")
+        return None
+
+def get_pdf_url(doi: str) -> Optional[str]:
+    """Get PDF URL using multiple methods"""
+    # Handle arXiv
+    if "arxiv" in doi.lower():
+        arxiv_id = doi.split('arXiv.')[-1]
+        return f"https://arxiv.org/pdf/{arxiv_id}.pdf"
+    
+    # Try Unpaywall
+    try:
+        response = requests.get(
+            f"https://api.unpaywall.org/v2/{doi}",
+            params={'email': RESEARCH_EMAIL},
+            timeout=10
+        )
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('best_oa_location') and data['best_oa_location'].get('url_for_pdf'):
+                return data['best_oa_location']['url_for_pdf']
+    except Exception as e:
+        logger.warning(f"Unpaywall API request failed: {str(e)}")
+
+    # Fallback to scraping
+    return _scrape_for_pdf_url(doi)
+
+def extract_text_from_pdf_url(pdf_url: str) -> Optional[str]:
+    """Download and extract text from PDF"""
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(pdf_url, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        with fitz.open(stream=response.content, filetype="pdf") as doc:
+            return "".join(page.get_text() for page in doc)
+            
+    except Exception as e:
+        logger.error(f"Error extracting PDF text: {str(e)}")
+        return None
+
+def extract_sections(full_text: str) -> Dict[str, str]:
+    """Extract key sections from paper text"""
+    logger.info("Extracting paper sections...")
+    lower_text = full_text.lower()
+    
+    patterns = {
+        'abstract': r'\babstract\b',
+        'introduction': r'\n1\.?\s+introduction\b',
+        'conclusion': r'\b(conclusions?|conclusion and future work|discussion)\b'
+    }
+    
+    end_markers = {
+        'introduction': r'\n2\.?\s+',
+        'conclusion': r'\b(acknowledgments?|references|bibliography)\b'
+    }
+    
+    results = {}
+    
+    # Extract abstract
+    try:
+        abstract_match = re.search(patterns['abstract'], lower_text)
+        intro_match = re.search(patterns['introduction'], lower_text)
+        if abstract_match and intro_match:
+            results['abstract'] = full_text[abstract_match.end():intro_match.start()].strip()
+        elif abstract_match:
+            results['abstract'] = full_text[abstract_match.end():abstract_match.end()+2000].strip().split('\n\n')[0]
+    except:
+        results['abstract'] = None
+
+    # Extract introduction
+    try:
+        intro_match = re.search(patterns['introduction'], lower_text)
+        intro_end_match = re.search(end_markers['introduction'], lower_text[intro_match.end():])
+        if intro_match and intro_end_match:
+            end = intro_match.end() + intro_end_match.start()
+            results['introduction'] = full_text[intro_match.end():end].strip()
+        elif intro_match:
+            results['introduction'] = full_text[intro_match.end():intro_match.end()+5000].strip()
+    except:
+        results['introduction'] = None
+
+    # Extract conclusion
+    try:
+        conclusion_match = re.search(patterns['conclusion'], lower_text)
+        conclusion_end_match = re.search(end_markers['conclusion'], lower_text[conclusion_match.end():])
+        if conclusion_match and conclusion_end_match:
+            end = conclusion_match.end() + conclusion_end_match.start()
+            results['conclusion'] = full_text[conclusion_match.end():end].strip()
+        elif conclusion_match:
+            results['conclusion'] = full_text[conclusion_match.end():conclusion_match.end()+5000].strip()
+    except:
+        results['conclusion'] = None
+
+    return results
 
 # Google Embeddings
 import google.generativeai as genai
@@ -61,6 +200,40 @@ class EmbeddedPaper:
     embedding: Optional[np.ndarray] = None
     similarity_score: Optional[float] = None
     paper_type: Optional[str] = None
+    # Full text sections
+    introduction: Optional[str] = None
+    conclusion: Optional[str] = None
+    full_text: Optional[str] = None
+    pdf_url: Optional[str] = None
+    
+    def extract_full_text(self) -> bool:
+        """Extract full text content from paper PDF if available"""
+        if not self.doi:
+            logger.warning(f"No DOI available for paper: {self.title}")
+            return False
+            
+        try:
+            pdf_url = get_pdf_url(self.doi)
+            if not pdf_url:
+                logger.warning(f"Could not find PDF URL for DOI: {self.doi}")
+                return False
+                
+            self.pdf_url = pdf_url
+            full_text = extract_text_from_pdf_url(pdf_url)
+            
+            if full_text:
+                sections = extract_sections(full_text)
+                self.full_text = full_text
+                self.introduction = sections.get('introduction')
+                self.conclusion = sections.get('conclusion')
+                # Update abstract if it was empty
+                if not self.abstract:
+                    self.abstract = sections.get('abstract')
+                return True
+                
+        except Exception as e:
+            logger.error(f"Error extracting full text for {self.doi}: {str(e)}")
+            return False
 
 class PaperTypeClassifier:
     """Classify papers into Review, Conference, or Journal types"""
