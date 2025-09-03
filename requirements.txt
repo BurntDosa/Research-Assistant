@@ -8,7 +8,7 @@ streamlit>=1.29,<2
 python-dotenv>=1.0,<2
 
 # Google Gemini + LangChain
-google-generativeai>=0.8,<1
+google-generativeai>=0.7.0,<0.8.0
 langchain>=0.2.7,<0.3
 langchain-google-genai>=1.0.2,<1.1
 
@@ -30,6 +30,9 @@ PyMuPDF>=1.24,<1.25
 
 # MCP server (already present in venv; keep unpinned to avoid resolver issues)
 mcp
+
+# Google Generative AI (for embeddings)
+google-ai-generativelanguage>=0.6.15,<0.7
 
 # Optional: FAISS for vector search. On some macOS/ARM systems, wheels may be unavailable.
 # If installation fails, comment this line out; the app degrades gracefully without FAISS.
