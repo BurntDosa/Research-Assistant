@@ -300,7 +300,7 @@ class PaperTypeClassifier:
 class FAISSVectorDatabase:
     """FAISS-based vector database for paper embeddings with comprehensive metadata"""
     
-    def __init__(self, db_path: str = "faiss_paper_embeddings"):
+    def __init__(self, db_path: str = "data/faiss_paper_embeddings"):
         self.db_path = db_path
         self.dimension = 768  # Google's embedding dimension
         self.index = None
@@ -325,6 +325,9 @@ class FAISSVectorDatabase:
             if os.path.exists(f"{self.db_path}.index"):
                 self.index = faiss.read_index(f"{self.db_path}.index")
                 logger.info(f"Loaded FAISS index with {self.index.ntotal} vectors")
+            else:
+                # No existing index, initialize empty one
+                self._initialize_empty_database()
                 
             if os.path.exists(f"{self.db_path}_metadata.pkl"):
                 with open(f"{self.db_path}_metadata.pkl", 'rb') as f:
@@ -612,7 +615,7 @@ class FAISSVectorDatabase:
 class EmbeddingAgent:
     """Main embedding agent for processing paper batches"""
     
-    def __init__(self, db_path: str = "faiss_paper_embeddings"):
+    def __init__(self, db_path: str = "data/faiss_paper_embeddings"):
         self.vector_db = FAISSVectorDatabase(db_path)
         logger.info("Embedding Agent initialized")
     
