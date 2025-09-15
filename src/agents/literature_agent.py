@@ -138,7 +138,7 @@ class SearchFilters(BaseModel):
 class GeminiLiteratureDatabase:
     """Advanced database manager optimized for Gemini-powered literature discovery"""
 
-    def __init__(self, db_path: str = "gemini_literature_discovery.db"):
+    def __init__(self, db_path: str = "data/gemini_literature_discovery.db"):
         self.db_path = db_path
         self.init_database()
 
@@ -371,10 +371,18 @@ class GeminiPaperScraper:
                 'fields': 'paperId,title,abstract,authors,year,citationCount,venue,url,externalIds,fieldsOfStudy'
             }
             
-            # Add year filter if specified
+            # Add year filter if specified - Semantic Scholar uses year parameter correctly
             if filters.year_start or filters.year_end:
-                year_filter = f"{filters.year_start or 1900}-{filters.year_end or 2030}"
-                params['year'] = year_filter
+                year_start = filters.year_start or 1900
+                year_end = filters.year_end or 2030
+                # Semantic Scholar expects year as integer, not range string
+                if filters.year_start and filters.year_end:
+                    # Use year range format for Semantic Scholar
+                    params['year'] = f"{year_start}-{year_end}"
+                elif filters.year_start:
+                    params['year'] = f"{year_start}-{year_start}"
+                elif filters.year_end:
+                    params['year'] = f"{year_end}-{year_end}"
             
             # Proper headers for Semantic Scholar
             headers = {
@@ -406,12 +414,28 @@ class GeminiPaperScraper:
                     venue = paper_data.get('venue', 'Unknown')
                     url = paper_data.get('url', '')
                     
-                    # Apply filters
+                    # Apply filters - enhanced year filtering
                     if filters.min_citations and citation_count < filters.min_citations:
                         logger.debug(f"Skipping S2 paper '{title[:50]}' - citations {citation_count} < min {filters.min_citations}")
                         continue
                     if filters.max_citations and citation_count > filters.max_citations:
                         continue
+                    
+                    # Enhanced year filtering - check actual publication year
+                    if filters.year_start or filters.year_end:
+                        try:
+                            paper_year = int(year) if year and str(year).isdigit() else None
+                            if paper_year:
+                                if filters.year_start and paper_year < filters.year_start:
+                                    logger.debug(f"Skipping S2 paper '{title[:50]}' - year {paper_year} < start {filters.year_start}")
+                                    continue
+                                if filters.year_end and paper_year > filters.year_end:
+                                    logger.debug(f"Skipping S2 paper '{title[:50]}' - year {paper_year} > end {filters.year_end}")
+                                    continue
+                        except (ValueError, TypeError):
+                            # If year parsing fails, skip the paper to be safe
+                            logger.debug(f"Skipping S2 paper '{title[:50]}' - invalid year format: {year}")
+                            continue
                     
                     # Check keyword filters
                     full_text = f"{title} {abstract}".lower()
@@ -485,12 +509,12 @@ class GeminiPaperScraper:
                 'select': 'title,author,abstract,published,container-title,DOI,URL,is-referenced-by-count,subject,type'
             }
             
-            # Add filters
+            # Add year filters - CrossRef uses proper date format
             filters_list = []
             if filters.year_start:
-                filters_list.append(f"from-pub-date:{filters.year_start}")
+                filters_list.append(f"from-pub-date:{filters.year_start}-01-01")
             if filters.year_end:
-                filters_list.append(f"until-pub-date:{filters.year_end}")
+                filters_list.append(f"until-pub-date:{filters.year_end}-12-31")
             
             if filters_list:
                 params['filter'] = ','.join(filters_list)
@@ -552,6 +576,22 @@ class GeminiPaperScraper:
                         continue
                     if filters.max_citations and citation_count > filters.max_citations:
                         continue
+                    
+                    # Enhanced year filtering - check actual publication year
+                    if filters.year_start or filters.year_end:
+                        try:
+                            paper_year = int(year) if year and str(year).isdigit() else None
+                            if paper_year:
+                                if filters.year_start and paper_year < filters.year_start:
+                                    logger.debug(f"Skipping CrossRef paper '{title[:50]}' - year {paper_year} < start {filters.year_start}")
+                                    continue
+                                if filters.year_end and paper_year > filters.year_end:
+                                    logger.debug(f"Skipping CrossRef paper '{title[:50]}' - year {paper_year} > end {filters.year_end}")
+                                    continue
+                        except (ValueError, TypeError):
+                            # If year parsing fails, skip the paper to be safe
+                            logger.debug(f"Skipping CrossRef paper '{title[:50]}' - invalid year format: {year}")
+                            continue
                     
                     # Check keyword filters
                     full_text = f"{title} {abstract}".lower()
@@ -619,10 +659,11 @@ class GeminiPaperScraper:
                 'mailto': 'gagan.bangaragiri@gmail.com'  # Polite pool for better performance
             }
             
-            # Add year filter if specified
+            # Add year filter if specified - OpenAlex uses publication_year filter
             if filters.year_start or filters.year_end:
                 year_start = filters.year_start or 2000
                 year_end = filters.year_end or 2030
+                # OpenAlex uses publication_year filter with proper format
                 params['filter'] = f'publication_year:{year_start}-{year_end}'
             
             # Simple headers - OpenAlex doesn't require complex headers
@@ -679,6 +720,22 @@ class GeminiPaperScraper:
                         continue
                     if filters.max_citations and citation_count > filters.max_citations:
                         continue
+                    
+                    # Enhanced year filtering - check actual publication year
+                    if filters.year_start or filters.year_end:
+                        try:
+                            paper_year = int(year) if year and str(year).isdigit() else None
+                            if paper_year:
+                                if filters.year_start and paper_year < filters.year_start:
+                                    logger.debug(f"Skipping OpenAlex paper '{title[:50]}' - year {paper_year} < start {filters.year_start}")
+                                    continue
+                                if filters.year_end and paper_year > filters.year_end:
+                                    logger.debug(f"Skipping OpenAlex paper '{title[:50]}' - year {paper_year} > end {filters.year_end}")
+                                    continue
+                        except (ValueError, TypeError):
+                            # If year parsing fails, skip the paper to be safe
+                            logger.debug(f"Skipping OpenAlex paper '{title[:50]}' - invalid year format: {year}")
+                            continue
                     
                     # Check keyword filters
                     full_text = f"{title} {abstract}".lower()
@@ -775,10 +832,12 @@ class GeminiPaperScraper:
             
             # Build query
             search_query = f"all:{query}"
-            if filters.year_start:
-                # arXiv uses submittedDate format
-                start_date = f"{filters.year_start}0101"
-                end_date = f"{filters.year_end or 2030}1231"
+            if filters.year_start or filters.year_end:
+                # arXiv uses submittedDate format with proper date range
+                year_start = filters.year_start or 1900
+                year_end = filters.year_end or 2030
+                start_date = f"{year_start}0101"
+                end_date = f"{year_end}1231"
                 search_query += f" AND submittedDate:[{start_date} TO {end_date}]"
             
             params = {
@@ -847,6 +906,22 @@ class GeminiPaperScraper:
                     # Apply citation filters (arXiv papers usually have low citations)
                     if filters.min_citations and citation_count < filters.min_citations:
                         continue
+                    
+                    # Enhanced year filtering - check actual publication year
+                    if filters.year_start or filters.year_end:
+                        try:
+                            paper_year = int(year) if year and str(year).isdigit() else None
+                            if paper_year:
+                                if filters.year_start and paper_year < filters.year_start:
+                                    logger.debug(f"Skipping arXiv paper '{title[:50]}' - year {paper_year} < start {filters.year_start}")
+                                    continue
+                                if filters.year_end and paper_year > filters.year_end:
+                                    logger.debug(f"Skipping arXiv paper '{title[:50]}' - year {paper_year} > end {filters.year_end}")
+                                    continue
+                        except (ValueError, TypeError):
+                            # If year parsing fails, skip the paper to be safe
+                            logger.debug(f"Skipping arXiv paper '{title[:50]}' - invalid year format: {year}")
+                            continue
                     
                     # Check keyword filters
                     full_text = f"{title} {abstract}".lower()
@@ -1002,6 +1077,22 @@ class GeminiPaperScraper:
                     # Apply citation filters
                     if filters.min_citations and citation_count < filters.min_citations:
                         continue
+                    
+                    # Enhanced year filtering - check actual publication year
+                    if filters.year_start or filters.year_end:
+                        try:
+                            paper_year = int(year) if year and str(year).isdigit() else None
+                            if paper_year:
+                                if filters.year_start and paper_year < filters.year_start:
+                                    logger.debug(f"Skipping Google Scholar paper '{title[:50]}' - year {paper_year} < start {filters.year_start}")
+                                    continue
+                                if filters.year_end and paper_year > filters.year_end:
+                                    logger.debug(f"Skipping Google Scholar paper '{title[:50]}' - year {paper_year} > end {filters.year_end}")
+                                    continue
+                        except (ValueError, TypeError):
+                            # If year parsing fails, skip the paper to be safe
+                            logger.debug(f"Skipping Google Scholar paper '{title[:50]}' - invalid year format: {year}")
+                            continue
                     
                     # Check keyword filters
                     full_text = f"{title} {abstract}".lower()
