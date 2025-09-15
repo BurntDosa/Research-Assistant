@@ -11,8 +11,8 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-from literature_agent import GeminiLiteratureDiscoveryAgent, SearchFilters
-from embedding_agent import EmbeddedPaper, EmbeddingAgent
+from .literature_agent import GeminiLiteratureDiscoveryAgent, SearchFilters
+from .embedding_agent import EmbeddedPaper, EmbeddingAgent
 
 # Simple placeholder for user database
 class UserSelectionDatabase:
@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PipelineConfig:
     """Configuration constants for the enhanced pipeline"""
-    INITIAL_PAPERS_PER_SOURCE = 5  # Find 5 papers from each source initially
-    SECONDARY_PAPERS_PER_SOURCE = 2  # Find 2 papers from each source in secondary searches
+    INITIAL_PAPERS_PER_SOURCE = 1  # Find 1 paper from each source initially (reduced for testing)
+    SECONDARY_PAPERS_PER_SOURCE = 1  # Find 1 paper from each source in secondary searches (reduced for testing)
     RELEVANCE_THRESHOLD = 0.7  # Minimum relevance score for papers
     TOP_DISPLAY_RESULTS = 10  # Show top 10 papers to user
     SIMILARITY_THRESHOLD = 0.7
@@ -72,7 +72,7 @@ class EnhancedResearchPipeline:
             raise
     
     def execute_initial_search(self, query: str, filters: Optional[SearchFilters] = None) -> Dict[str, Any]:
-        """Execute initial search for 5 papers per source, return top 10 most relevant"""
+        """Execute initial search for 1 paper per source, return top 10 most relevant (reduced for testing)"""
         start_time = time.time()
         
         logger.info("=== INITIAL SEARCH: Finding Papers ===")
@@ -228,22 +228,53 @@ class EnhancedResearchPipeline:
             return results
 
     def save_selected_papers(self, selected_indices: List[int]) -> Dict[str, Any]:
-        """Save selected papers to user database"""
+        """Save selected papers to vector database for literature review"""
         try:
             selected_papers = [self.current_session_papers[i] for i in selected_indices if i < len(self.current_session_papers)]
             
             if not selected_papers:
                 return {'success': False, 'message': 'No valid papers selected'}
             
-            # Save to user database (implement according to your user DB structure)
-            # For now, just return success
-            logger.info(f"Saved {len(selected_papers)} papers to user database")
+            # Convert papers to dictionary format for the embedding agent
+            papers_dict = []
+            for paper in selected_papers:
+                paper_dict = {
+                    'title': paper.title,
+                    'abstract': getattr(paper, 'abstract', ''),
+                    'authors': getattr(paper, 'authors', []),
+                    'journal': getattr(paper, 'journal', ''),
+                    'publication_date': getattr(paper, 'publication_date', ''),
+                    'citation_count': getattr(paper, 'citation_count', 0),
+                    'doi': getattr(paper, 'doi', ''),
+                    'url': getattr(paper, 'url', ''),
+                    'source': getattr(paper, 'source', ''),
+                    'paper_type': getattr(paper, 'paper_type', 'unknown'),
+                    'relevance_score': getattr(paper, 'relevance_score', 0.0)
+                }
+                papers_dict.append(paper_dict)
             
-            return {
-                'success': True,
-                'papers_saved': len(selected_papers),
-                'message': f'Successfully saved {len(selected_papers)} papers to your collection'
-            }
+            # Save papers to the embedding agent's vector database
+            try:
+                embedded_papers = self.embedding_agent.vector_db.add_papers_batch(
+                    papers=papers_dict,
+                    search_query="user_selected_papers",
+                    session_id=self.session_id
+                )
+                saved_count = len(embedded_papers)
+                logger.info(f"Saved {saved_count} papers to vector database")
+                
+                if saved_count > 0:
+                    return {
+                        'success': True,
+                        'papers_saved': saved_count,
+                        'message': f'Successfully saved {saved_count} papers to your collection for literature review'
+                    }
+                else:
+                    return {'success': False, 'message': 'No papers were successfully added to the database'}
+                    
+            except Exception as e:
+                logger.error(f"Failed to add papers to vector database: {e}")
+                return {'success': False, 'message': f'Failed to save papers to database: {str(e)}'}
             
         except Exception as e:
             logger.error(f"Failed to save selected papers: {e}")
@@ -253,20 +284,15 @@ class EnhancedResearchPipeline:
         """Search for specific number of papers from each source"""
         logger.info(f"Searching for {papers_per_source} papers per source")
         
-        # Temporarily modify the literature agent's batch size
-        original_batch_size = getattr(self.literature_agent, 'papers_to_find', 4)
-        self.literature_agent.papers_to_find = papers_per_source * 4  # 4 sources
+        # Pass max_results directly to ensure exactly papers_per_source from each source
+        max_results = papers_per_source * 4  # 4 sources (with 1 per source = 4 total)
         
-        try:
-            found_papers = self.literature_agent.search_papers(
-                query=query,
-                filters=filters or SearchFilters()
-            )
-            return found_papers
-            
-        finally:
-            # Restore original batch size
-            self.literature_agent.papers_to_find = original_batch_size
+        found_papers = self.literature_agent.search_papers(
+            query=query,
+            filters=filters or SearchFilters(),
+            max_results=max_results
+        )
+        return found_papers
 
     def _filter_relevant_papers(self, papers: List[Any], threshold: float) -> List[Any]:
         """Filter papers based on relevance threshold"""
