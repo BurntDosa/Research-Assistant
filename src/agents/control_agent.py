@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PipelineConfig:
     """Configuration constants for the enhanced pipeline"""
-    INITIAL_PAPERS_PER_SOURCE = 1  # Find 1 paper from each source initially (reduced for testing)
-    SECONDARY_PAPERS_PER_SOURCE = 1  # Find 1 paper from each source in secondary searches (reduced for testing)
+    INITIAL_PAPERS_PER_SOURCE = 5  # Find 5 papers from each source initially
+    SECONDARY_PAPERS_PER_SOURCE = 3  # Find 3 papers from each source in secondary searches
     RELEVANCE_THRESHOLD = 0.7  # Minimum relevance score for papers
     TOP_DISPLAY_RESULTS = 10  # Show top 10 papers to user
     SIMILARITY_THRESHOLD = 0.7
@@ -71,13 +71,15 @@ class EnhancedResearchPipeline:
             logger.error(f"Failed to initialize agents: {e}")
             raise
     
-    def execute_initial_search(self, query: str, filters: Optional[SearchFilters] = None) -> Dict[str, Any]:
+    def execute_initial_search(self, query: str, filters: Optional[SearchFilters] = None, sources: Optional[List[str]] = None) -> Dict[str, Any]:
         """Execute initial search for 1 paper per source, return top 10 most relevant (reduced for testing)"""
         start_time = time.time()
         
         logger.info("=== INITIAL SEARCH: Finding Papers ===")
         logger.info(f"Starting initial search for query: '{query}'")
         logger.info(f"Target: {PipelineConfig.INITIAL_PAPERS_PER_SOURCE} papers per source")
+        if sources:
+            logger.info(f"Using selected sources: {sources}")
         
         # Initialize results structure
         results = {
@@ -93,7 +95,7 @@ class EnhancedResearchPipeline:
         
         try:
             # Search for papers with increased target per source
-            found_papers = self._search_papers_per_source(query, filters, PipelineConfig.INITIAL_PAPERS_PER_SOURCE)
+            found_papers = self._search_papers_per_source(query, filters, PipelineConfig.INITIAL_PAPERS_PER_SOURCE, sources)
             
             if not found_papers:
                 logger.warning("No papers found in initial search")
@@ -238,19 +240,35 @@ class EnhancedResearchPipeline:
             # Convert papers to dictionary format for the embedding agent
             papers_dict = []
             for paper in selected_papers:
-                paper_dict = {
-                    'title': paper.title,
-                    'abstract': getattr(paper, 'abstract', ''),
-                    'authors': getattr(paper, 'authors', []),
-                    'journal': getattr(paper, 'journal', ''),
-                    'publication_date': getattr(paper, 'publication_date', ''),
-                    'citation_count': getattr(paper, 'citation_count', 0),
-                    'doi': getattr(paper, 'doi', ''),
-                    'url': getattr(paper, 'url', ''),
-                    'source': getattr(paper, 'source', ''),
-                    'paper_type': getattr(paper, 'paper_type', 'unknown'),
-                    'relevance_score': getattr(paper, 'relevance_score', 0.0)
-                }
+                # Handle both dict and object formats
+                if isinstance(paper, dict):
+                    paper_dict = {
+                        'title': paper.get('title', ''),
+                        'abstract': paper.get('abstract', ''),
+                        'authors': paper.get('authors', []),
+                        'journal': paper.get('journal', ''),
+                        'publication_date': paper.get('publication_date', ''),
+                        'citation_count': paper.get('citation_count', 0),
+                        'doi': paper.get('doi', ''),
+                        'url': paper.get('url', ''),
+                        'source': paper.get('source', ''),
+                        'paper_type': paper.get('paper_type', 'unknown'),
+                        'relevance_score': paper.get('relevance_score', 0.0)
+                    }
+                else:
+                    paper_dict = {
+                        'title': getattr(paper, 'title', ''),
+                        'abstract': getattr(paper, 'abstract', ''),
+                        'authors': getattr(paper, 'authors', []),
+                        'journal': getattr(paper, 'journal', ''),
+                        'publication_date': getattr(paper, 'publication_date', ''),
+                        'citation_count': getattr(paper, 'citation_count', 0),
+                        'doi': getattr(paper, 'doi', ''),
+                        'url': getattr(paper, 'url', ''),
+                        'source': getattr(paper, 'source', ''),
+                        'paper_type': getattr(paper, 'paper_type', 'unknown'),
+                        'relevance_score': getattr(paper, 'relevance_score', 0.0)
+                    }
                 papers_dict.append(paper_dict)
             
             # Save papers to the embedding agent's vector database
@@ -277,10 +295,12 @@ class EnhancedResearchPipeline:
                 return {'success': False, 'message': f'Failed to save papers to database: {str(e)}'}
             
         except Exception as e:
+            import traceback
             logger.error(f"Failed to save selected papers: {e}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return {'success': False, 'message': f'Failed to save papers: {str(e)}'}
 
-    def _search_papers_per_source(self, query: str, filters: Optional[SearchFilters], papers_per_source: int) -> List[Any]:
+    def _search_papers_per_source(self, query: str, filters: Optional[SearchFilters], papers_per_source: int, sources: Optional[List[str]] = None) -> List[Any]:
         """Search for specific number of papers from each source"""
         logger.info(f"Searching for {papers_per_source} papers per source")
         
@@ -290,7 +310,8 @@ class EnhancedResearchPipeline:
         found_papers = self.literature_agent.search_papers(
             query=query,
             filters=filters or SearchFilters(),
-            max_results=max_results
+            max_results=max_results,
+            sources=sources  # Pass selected sources
         )
         return found_papers
 
@@ -312,9 +333,85 @@ class EnhancedResearchPipeline:
         return relevant_papers
 
     def _generate_augmented_query(self, original_query: str, selected_papers: List[Any]) -> str:
-        """Generate augmented query using selected papers' titles and abstracts"""
+        """Generate augmented query using AI to extract keywords and restructure the search query"""
         try:
+            import google.generativeai as genai
+            
             # Extract titles and abstracts from selected papers
+            paper_summaries = []
+            
+            for i, paper in enumerate(selected_papers[:5], 1):  # Limit to first 5 papers
+                if isinstance(paper, dict):
+                    title = paper.get('title', '')
+                    abstract = paper.get('abstract', '')
+                else:
+                    title = getattr(paper, 'title', '')
+                    abstract = getattr(paper, 'abstract', '')
+                
+                if title:
+                    summary = f"Paper {i}: {title}"
+                    if abstract:
+                        summary += f"\nAbstract: {abstract[:300]}"
+                    paper_summaries.append(summary)
+            
+            if not paper_summaries:
+                logger.warning("No paper content available for augmentation")
+                return original_query
+            
+            # Use Gemini to intelligently extract keywords and restructure query
+            gemini_api_key = os.getenv("GEMINI_API_KEY")
+            if not gemini_api_key:
+                logger.warning("GEMINI_API_KEY not found, falling back to simple augmentation")
+                return self._simple_keyword_extraction(original_query, selected_papers)
+            
+            genai.configure(api_key=gemini_api_key)
+            model = genai.GenerativeModel('gemini-2.5-flash')
+            
+            prompt = f"""You are a research assistant helping to improve a literature search query.
+
+Original Search Query: "{original_query}"
+
+Based on these relevant papers that were found:
+
+{chr(10).join(paper_summaries)}
+
+Task: Generate an improved, more specific search query that:
+1. Extracts the most important technical keywords and concepts from these papers
+2. Identifies specific methodologies, techniques, or domains mentioned
+3. Restructures the query to be more precise and academic
+4. Focuses on deeper, more specialized aspects of the topic
+5. Uses terminology that would appear in related research papers
+
+Requirements:
+- Keep the query concise (max 15 words)
+- Use technical/academic language
+- Include 3-5 key concepts or methodologies from the papers
+- Make it suitable for academic database searches
+- Do NOT use generic words like "paper", "study", "research", "analysis"
+
+Return ONLY the improved search query, nothing else."""
+
+            response = model.generate_content(prompt)
+            augmented_query = response.text.strip()
+            
+            # Remove quotes if present
+            augmented_query = augmented_query.strip('"').strip("'")
+            
+            # Fallback if response is too long or empty
+            if not augmented_query or len(augmented_query.split()) > 20:
+                logger.warning("AI-generated query invalid, using fallback")
+                return self._simple_keyword_extraction(original_query, selected_papers)
+            
+            logger.info(f"AI-augmented query: {augmented_query}")
+            return augmented_query
+            
+        except Exception as e:
+            logger.error(f"Failed to generate AI-augmented query: {e}")
+            return self._simple_keyword_extraction(original_query, selected_papers)
+    
+    def _simple_keyword_extraction(self, original_query: str, selected_papers: List[Any]) -> str:
+        """Fallback: Simple keyword extraction when AI is unavailable"""
+        try:
             titles = []
             abstracts = []
             
@@ -329,38 +426,37 @@ class EnhancedResearchPipeline:
                 if title:
                     titles.append(title)
                 if abstract:
-                    abstracts.append(abstract[:200])  # First 200 chars of abstract
+                    abstracts.append(abstract[:200])
             
-            # Extract key terms from titles and abstracts
-            key_terms = []
-            
-            # Simple keyword extraction (you could enhance this with NLP)
+            # Extract key terms
             all_text = ' '.join(titles + abstracts).lower()
             
-            # Extract potential key terms (simple approach)
             import re
             words = re.findall(r'\b[a-zA-Z]{4,}\b', all_text)
-            word_freq = {}
             
+            # Filter out common words
+            stop_words = {'abstract', 'paper', 'study', 'research', 'using', 'method', 
+                         'approach', 'based', 'results', 'data', 'model', 'analysis'}
+            
+            word_freq = {}
             for word in words:
-                if word not in ['abstract', 'paper', 'study', 'research', 'using', 'method', 'approach']:
+                if word not in stop_words:
                     word_freq[word] = word_freq.get(word, 0) + 1
             
             # Get top frequent terms
             top_terms = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)[:5]
             key_terms = [term for term, freq in top_terms if freq > 1]
             
-            # Create augmented query
             if key_terms:
                 augmented_query = f"{original_query} {' '.join(key_terms[:3])}"
             else:
                 augmented_query = original_query
             
-            logger.info(f"Generated augmented query with terms: {key_terms[:3]}")
+            logger.info(f"Simple keyword augmentation: {key_terms[:3]}")
             return augmented_query
             
         except Exception as e:
-            logger.error(f"Failed to generate augmented query: {e}")
+            logger.error(f"Simple keyword extraction failed: {e}")
             return original_query
     
     def _execute_phase_one_fast(self, query: str, filters: Optional[SearchFilters]) -> List[EmbeddedPaper]:
@@ -630,27 +726,53 @@ class EnhancedResearchPipeline:
                 ranked_papers = []
                 for paper in papers:
                     try:
-                        paper_dict = {
-                            'paper_id': getattr(paper, 'paper_id', ''),
-                            'title': getattr(paper, 'title', ''),
-                            'authors': getattr(paper, 'authors', []),
-                            'abstract': getattr(paper, 'abstract', ''),
-                            'journal': getattr(paper, 'journal', ''),
-                            'publication_date': getattr(paper, 'publication_date', ''),
-                            'citation_count': self.safe_int(getattr(paper, 'citation_count', 0)),
-                            'relevance_score': self.safe_float(getattr(paper, 'relevance_score', 0.0)),
-                            'confidence_score': self.safe_float(getattr(paper, 'confidence_score', 0.0)),
-                            'url': getattr(paper, 'url', ''),
-                            'doi': getattr(paper, 'doi', ''),
-                            'keywords': getattr(paper, 'keywords', []),
-                            'categories': getattr(paper, 'categories', []),
-                            'source': getattr(paper, 'source', ''),
-                            'gemini_reasoning': getattr(paper, 'gemini_reasoning', ''),
-                            'key_matches': getattr(paper, 'key_matches', []),
-                            'concerns': getattr(paper, 'concerns', []),
-                            'similarity_score': self.safe_float(getattr(paper, 'similarity_score', 0.0)),
-                            'paper_type': getattr(paper, 'paper_type', 'unknown')
-                        }
+                        # Check if already a dict
+                        if isinstance(paper, dict):
+                            # Already a dict, just ensure it has required fields
+                            paper_dict = {
+                                'paper_id': paper.get('paper_id', ''),
+                                'title': paper.get('title', ''),
+                                'authors': paper.get('authors', []),
+                                'abstract': paper.get('abstract', ''),
+                                'journal': paper.get('journal', 'Unknown'),
+                                'publication_date': paper.get('publication_date', 'Unknown'),
+                                'citation_count': paper.get('citation_count', 0),
+                                'relevance_score': paper.get('relevance_score', 0.0),
+                                'confidence_score': paper.get('confidence_score', 0.0),
+                                'url': paper.get('url', ''),
+                                'doi': paper.get('doi', ''),
+                                'keywords': paper.get('keywords', []),
+                                'categories': paper.get('categories', []),
+                                'source': paper.get('source', 'unknown'),
+                                'gemini_reasoning': paper.get('gemini_reasoning', ''),
+                                'key_matches': paper.get('key_matches', []),
+                                'concerns': paper.get('concerns', []),
+                                'similarity_score': paper.get('similarity_score', 0.0),
+                                'paper_type': paper.get('paper_type', 'unknown')
+                            }
+                        else:
+                            # It's an object, use getattr
+                            paper_dict = {
+                                'paper_id': getattr(paper, 'paper_id', ''),
+                                'title': getattr(paper, 'title', ''),
+                                'authors': getattr(paper, 'authors', []),
+                                'abstract': getattr(paper, 'abstract', ''),
+                                'journal': getattr(paper, 'journal', 'Unknown'),
+                                'publication_date': getattr(paper, 'publication_date', 'Unknown'),
+                                'citation_count': self.safe_int(getattr(paper, 'citation_count', 0)),
+                                'relevance_score': self.safe_float(getattr(paper, 'relevance_score', 0.0)),
+                                'confidence_score': self.safe_float(getattr(paper, 'confidence_score', 0.0)),
+                                'url': getattr(paper, 'url', ''),
+                                'doi': getattr(paper, 'doi', ''),
+                                'keywords': getattr(paper, 'keywords', []),
+                                'categories': getattr(paper, 'categories', []),
+                                'source': getattr(paper, 'source', 'unknown'),
+                                'gemini_reasoning': getattr(paper, 'gemini_reasoning', ''),
+                                'key_matches': getattr(paper, 'key_matches', []),
+                                'concerns': getattr(paper, 'concerns', []),
+                                'similarity_score': self.safe_float(getattr(paper, 'similarity_score', 0.0)),
+                                'paper_type': getattr(paper, 'paper_type', 'unknown')
+                            }
                         ranked_papers.append(paper_dict)
                     except Exception as e:
                         logger.warning(f"Error converting paper for ranking: {e}")

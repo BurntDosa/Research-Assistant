@@ -1463,7 +1463,7 @@ class GeminiLiteratureDiscoveryAgent:
         logger.info(f"Started session {self.session_id[:8]} with query: '{query}'")
         return self.session_id
 
-    async def search_papers_async(self, query: str, filters: Optional[Dict[str, Any]] = None, max_results: int = 15) -> List[Paper]:
+    async def search_papers_async(self, query: str, filters: Optional[Dict[str, Any]] = None, max_results: int = 15, sources: Optional[List[str]] = None) -> List[Paper]:
         """Asynchronously search for papers using multiple sources with Gemini validation"""
         if not filters:
             filters = {}
@@ -1485,15 +1485,26 @@ class GeminiLiteratureDiscoveryAgent:
             'failed_sources': []
         }
         
-        # Execute searches sequentially with delays to be respectful to APIs
-        sources = [
+        # Define all available sources
+        all_sources = [
             ('google_scholar_serpapi', self.scraper.search_google_scholar_serpapi),
             ('crossref', self.scraper.search_crossref),
             ('openalex', self.scraper.search_openalex),
             ('arxiv', self.scraper.search_arxiv_api)
         ]
         
-        for source_name, search_func in sources:
+        # Filter sources based on parameter (use all if not specified)
+        if sources:
+            # Only use requested sources
+            available_sources = [src for src in all_sources if src[0] in sources]
+            if not available_sources:
+                logger.warning(f"No valid sources from requested: {sources}. Using all sources.")
+                available_sources = all_sources
+        else:
+            available_sources = all_sources
+        
+        # Execute searches sequentially with delays to be respectful to APIs
+        for source_name, search_func in available_sources:
             source_stats['attempted'] += 1
             
             try:
@@ -1741,10 +1752,10 @@ class GeminiLiteratureDiscoveryAgent:
         logger.info(f"Search complete: {len(validated_papers)} papers validated and ranked (avg relevance: {avg_relevance:.2f})")
         return validated_papers
 
-    def search_papers(self, query: str, filters: Optional[Dict[str, Any]] = None, max_results: int = 15) -> List[Paper]:
+    def search_papers(self, query: str, filters: Optional[Dict[str, Any]] = None, max_results: int = 15, sources: Optional[List[str]] = None) -> List[Paper]:
         """Synchronous wrapper for async paper search"""
         try:
-            return asyncio.run(self.search_papers_async(query, filters, max_results))
+            return asyncio.run(self.search_papers_async(query, filters, max_results, sources))
         except Exception as e:
             # Add detailed traceback for debugging
             import traceback

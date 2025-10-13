@@ -2,7 +2,62 @@
 
 A modern, AI-powered research discovery hub built with **Google Gemini 2.5 Flash** and **FAISS vector database**. This sophisticated tool provides intelligent paper discovery, iterative search augmentation, individual paper selection, and automated literature review generation through a beautiful **Gradio interface** with multi-agent coordination.
 
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.8 or higher
+- API Keys (configured on first launch):
+  - **Google Gemini API** - [Get it here](https://makersuite.google.com/app/apikey) (Free tier available)
+  - **SerpAPI** - [Get it here](https://serpapi.com/manage-api-key) (100 free searches/month)
+  - **OpenAI API** (Optional) - [Get it here](https://platform.openai.com/api-keys)
+
+### Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd Research-Assistant
+
+# Create and activate virtual environment
+python -m venv venv_gemini
+source venv_gemini/bin/activate  # On Windows: venv_gemini\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Launch the application
+python main.py
+```
+
+### First Launch - API Key Configuration
+
+When you first launch the application, you'll see an **API Key Configuration Screen**:
+
+1. 🔑 Click the links to get your API keys
+2. ✍️ Paste them into the configuration form
+3. 💾 Click "Save & Continue"
+4. 🎉 Start using the Research Assistant!
+
+Your API keys are stored securely in a local `.env` file and never shared with anyone except the respective API providers.
+
+📖 **Detailed Setup Guide**: See [docs/QUICK_START.md](docs/QUICK_START.md)  
+🔐 **API Key Documentation**: See [docs/API_KEY_SETUP.md](docs/API_KEY_SETUP.md)
+
 ## ✨ Features
+
+### 📤 PDF Upload & Private Paper Management
+- **Upload Local Papers**: Add your own PDF research papers from your system
+- **Private Paper Access**: Include unpublished work, internal documents, or subscription-only papers
+- **Automatic Parsing**: Intelligent extraction of title, authors, abstract, and content
+- **Batch Upload**: Upload multiple PDF files simultaneously
+- **Seamless Integration**: Uploaded papers work with all search and review features
+
+### 🌐 Flexible Source Selection (NEW!)
+- **Choose Your Databases**: Select from Google Scholar, arXiv, CrossRef, and OpenAlex
+- **Uploads-Only Mode**: Search only your uploaded papers without internet searches
+- **Hybrid Search**: Combine any database sources with your private papers
+- **Smart Filtering**: Match sources to your research field (STEM, medical, interdisciplinary)
+- **Performance Control**: Search fewer sources for faster results
 
 ### 🤖 AI-Powered Paper Discovery
 - **Google Gemini 2.5 Flash Integration**: Advanced relevance scoring and paper validation
@@ -125,18 +180,61 @@ else:
 
 ## 📚 Usage Guide
 
-### 1. Basic Paper Search
+### 1. Upload Your Own Papers (New!)
+
+**Before searching, you can add your private research papers:**
+
+1. **Click "📤 Upload Your Own Papers"** accordion at the top
+2. **Select PDF files** from your computer (single or multiple files)
+3. **Click "📤 Upload & Parse Papers"** button
+4. The system will:
+   - Extract title, authors, and abstract automatically
+   - Add papers to the FAISS vector database
+   - Make them available for search and literature review generation
+
+**Perfect for:**
+- 🔒 Private or unpublished papers
+- 📚 Papers you already have saved locally
+- 💼 Internal company research documents
+- 📖 Papers from subscription journals you have access to
+
+### 2. Basic Paper Search
 
 1. **Enter your research query** in the search box
 2. **Configure search filters** (optional):
    - Paper type (Journal, Conference, Review, All Types)
    - Publication date range (start/end year)
    - Minimum citation count
+   - **Search sources** (NEW): Choose which databases to search
 3. **Click "🔍 Find Research Papers"** to begin discovery
 4. **Review results** with AI-generated relevance scores and paper type indicators
 5. **Select individual papers** using the interactive checkboxes (up to 20 papers displayed)
 
-### 2. Advanced Features
+### 2.5. Choosing Search Sources (NEW!)
+
+In the **⚙️ Advanced Options** section, you can now select which databases to search:
+
+#### Available Sources:
+- ✅ **Google Scholar (SerpAPI)**: Most comprehensive, requires API key
+- ✅ **arXiv**: Latest preprints in STEM fields (free)
+- ✅ **CrossRef**: Peer-reviewed papers with DOIs (free)
+- ✅ **OpenAlex**: Open-access scholarly works (free)
+
+#### Usage Scenarios:
+```
+All Sources (Default)     → Most comprehensive results
+arXiv + OpenAlex          → Latest research only
+Google Scholar + CrossRef → Peer-reviewed papers only
+None Selected             → Search ONLY your uploaded papers!
+```
+
+**Pro Tips:**
+- Use fewer sources for faster searches
+- Uncheck all sources to search only your uploaded PDFs
+- Mix sources with uploads for hybrid search
+- See `SOURCE_SELECTION_QUICKSTART.md` for detailed guide
+
+### 3. Advanced Features
 
 #### Individual Paper Selection & Management
 - **Interactive Checkboxes**: Select specific papers from search results (up to 20 papers)

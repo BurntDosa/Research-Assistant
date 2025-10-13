@@ -543,14 +543,50 @@ class FAISSVectorDatabase:
                 if paper_type_filter and metadata.get('paper_type') != paper_type_filter:
                     continue
                 
-                # Create EmbeddedPaper object
-                embedded_paper = EmbeddedPaper(**metadata)
-                embedded_paper.similarity_score = float(score)
-                
-                similar_papers.append(embedded_paper)
-                
-                if len(similar_papers) >= k:
-                    break
+                try:
+                    # Ensure all required fields have default values
+                    metadata_with_defaults = {
+                        'paper_id': metadata.get('paper_id', paper_id),
+                        'title': metadata.get('title', 'Unknown Title'),
+                        'authors': metadata.get('authors', []),
+                        'abstract': metadata.get('abstract', ''),
+                        'journal': metadata.get('journal', 'Unknown'),
+                        'publication_date': metadata.get('publication_date', 'Unknown'),
+                        'citation_count': metadata.get('citation_count', 0),
+                        'relevance_score': metadata.get('relevance_score', 0.0),
+                        'confidence_score': metadata.get('confidence_score', 0.0),
+                        'url': metadata.get('url', ''),
+                        'doi': metadata.get('doi'),
+                        'keywords': metadata.get('keywords', []),
+                        'categories': metadata.get('categories', []),
+                        'source': metadata.get('source', 'unknown'),
+                        'gemini_reasoning': metadata.get('gemini_reasoning'),
+                        'key_matches': metadata.get('key_matches', []),
+                        'concerns': metadata.get('concerns', []),
+                        'search_query': metadata.get('search_query', ''),
+                        'session_id': metadata.get('session_id', ''),
+                        'timestamp': metadata.get('timestamp', ''),
+                        'embedding': None,
+                        'similarity_score': float(score),
+                        'paper_type': metadata.get('paper_type', 'unknown'),
+                        'introduction': metadata.get('introduction'),
+                        'conclusion': metadata.get('conclusion'),
+                        'full_text': metadata.get('full_text'),
+                        'pdf_url': metadata.get('pdf_url')
+                    }
+                    
+                    # Create EmbeddedPaper object
+                    embedded_paper = EmbeddedPaper(**metadata_with_defaults)
+                    
+                    similar_papers.append(embedded_paper)
+                    
+                    if len(similar_papers) >= k:
+                        break
+                        
+                except Exception as e:
+                    logger.error(f"Error creating EmbeddedPaper from metadata: {e}")
+                    logger.error(f"Metadata keys: {list(metadata.keys())}")
+                    continue
             
             logger.info(f"Found {len(similar_papers)} similar papers (filter: {paper_type_filter})")
             return similar_papers
