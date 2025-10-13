@@ -213,10 +213,18 @@ enhanced*
 
 # macOS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 
 # Gradio cache
 .gradio/
 
 # Generated output and data
 latex_output/
-data/README.md.backup
+data/*
+!data/.gitkeep
+*.db
+*.sqlite
+*.sqlite3

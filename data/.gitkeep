@@ -1,0 +1,23 @@
+# Data Directory
+
+This directory is automatically created by the application to store:
+
+- **SQLite Database**: `gemini_literature_discovery.db` - Paper metadata and search sessions
+- **Uploaded PDFs**: User-uploaded research papers
+- **FAISS Index**: Vector database index files
+
+## 🔒 Privacy
+
+All files in this directory are:
+- ✅ **Local only** - Never uploaded to GitHub
+- ✅ **User-specific** - Contains your personal research data
+- ✅ **Gitignored** - Automatically excluded from version control
+
+## 🧹 Cleanup
+
+To reset your data:
+```bash
+rm -rf data/*
+```
+
+The application will recreate the necessary files on next launch.
