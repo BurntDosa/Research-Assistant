@@ -133,11 +133,10 @@ class APIKeyManager:
             if validation_errors:
                 return False, "Invalid key format:\n" + "\n".join(validation_errors)
             
-            # Create backup of existing .env
-            if self.config_file.exists():
-                backup_file = self.config_file.with_suffix('.env.backup')
-                import shutil
-                shutil.copy2(self.config_file, backup_file)
+            # Note: Backup functionality removed for security.
+            # .env files should never be backed up in the repository directory
+            # as they contain sensitive API keys that could be accidentally committed.
+            # Users should use version control tools like git stash or external backups.
             
             # Read existing .env to preserve other variables
             existing_lines = []

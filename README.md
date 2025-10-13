@@ -856,6 +856,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Discussions**: [GitHub Discussions](https://github.com/BurntDosa/Research-Assistant/discussions)
 - **Email**: Contact via the email configured in your `.env` file
 
+## 🔐 Security
+
+- **Security Policy**: See [SECURITY.md](SECURITY.md) for security best practices and vulnerability reporting
+- **API Key Protection**: Your API keys are stored locally in `.env` files and never committed to version control
+- **Important**: If you received a notification about an exposed API key, see [API_KEY_INCIDENT.md](API_KEY_INCIDENT.md) for immediate action steps
+
 ---
 
 **Happy Researching! 🎓**
