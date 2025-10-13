@@ -5,32 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2025-10-13
-
-### 🔒 Security
-
-#### API Key Exposure Fix
-- **Fixed exposed API key vulnerability**: Prevented `.env` backup files from being committed to repository
-- **Enhanced .gitignore**: Added comprehensive patterns to exclude sensitive backup files
-  - `*.env.backup`
-  - `*.env.backup.*`
-  - `.env.backup*`
-  - `.env.*`
-- **Removed compromised keys**: Cleaned up exposed API keys from repository history
-- **Updated API key manager**: Improved security checks in `src/utils/api_key_manager.py`
-
-### 📝 Documentation
-
-- **README improvements**: Fixed duplications and improved code formatting
-- **Security documentation**: Added immediate action guide for API key exposure incidents
-
-### 🛠️ Maintenance
-
-- **Git tracking cleanup**: Removed backup files from git tracking
-- **Code quality**: Fixed formatting issues and improved code organization
-
----
-
 ## [1.0.0] - 2025-10-13
 
 ### 🎉 Initial Public Release
