@@ -220,3 +220,6 @@ enhanced*
 # Generated output and data
 latex_output/
 data/README.md.backup
+
+# Release files
+# Note: Release zips like Research-Assistant-v*.zip SHOULD be committed
