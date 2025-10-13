@@ -1,39 +1,46 @@
 
 ############################################################
-# Minimal, correct dependencies for this codebase (Py 3.11)
+# Production-ready dependencies for Research Assistant
+# Python 3.9+ required
+# Last updated: 2025-10-13
 ############################################################
 
-# App/UI
+# Core Application
 gradio>=4.0,<5
 python-dotenv>=1.0,<2
 
-# Google Gemini + LangChain
-google-generativeai>=0.7.0,<0.8.0
-langchain>=0.2.7,<0.3
-langchain-google-genai>=1.0.2,<1.1
+# Google Gemini AI
+google-generativeai>=0.7.2,<0.8.0
 
-# Data & parsing
+# LangChain
+langchain>=0.2.7,<0.3
+langchain-google-genai>=1.0.2,<2.0
+
+# Data Processing
 pandas>=2.2,<3
 numpy>=1.26,<3
+
+# Web & API
 requests>=2.31,<3
 beautifulsoup4>=4.12,<5
-pydantic>=2.6,<3
-tenacity>=8.2,<9
-
-# Async helpers
 aiohttp>=3.9,<4
+httpx>=0.25,<0.26
+
+# Async & Concurrency
 asyncio-throttle>=1.0.2,<2
 anyio>=4.0,<5
+tenacity>=8.2,<9
 
-# PDF text extraction (the correct package for `import fitz` is PyMuPDF)
+# Data Validation
+pydantic>=2.6,<3
+
+# PDF Processing
 PyMuPDF>=1.24,<1.25
 
-# MCP server (already present in venv; keep unpinned to avoid resolver issues)
-mcp
+# Vector Search (FAISS)
+# Note: On some systems, pre-built wheels may not be available
+# If installation fails, you can comment this out - app will work without vector search
+faiss-cpu>=1.7.4,<2.0
 
-# Google Generative AI (for embeddings)
-google-ai-generativelanguage>=0.6.15,<0.7
-
-# Optional: FAISS for vector search. On some macOS/ARM systems, wheels may be unavailable.
-# If installation fails, comment this line out; the app degrades gracefully without FAISS.
-# faiss-cpu>=1.7.4
+# Model Context Protocol (MCP) Server
+mcp>=0.1.0
