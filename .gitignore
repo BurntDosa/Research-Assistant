@@ -219,4 +219,4 @@ enhanced*
 
 # Generated output and data
 latex_output/
-data/
+data/README.md.backup
