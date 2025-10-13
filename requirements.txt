@@ -2,11 +2,11 @@
 ############################################################
 # Production-ready dependencies for Research Assistant
 # Python 3.9+ required
-# Last updated: 2025-10-13
+# Tested and verified: 2025-10-13
 ############################################################
 
-# Core Application
-gradio>=4.0,<5
+# Core Application - Compatible versions
+gradio==4.36.1
 python-dotenv>=1.0,<2
 
 # Google Gemini AI
@@ -31,8 +31,8 @@ asyncio-throttle>=1.0.2,<2
 anyio>=4.0,<5
 tenacity>=8.2,<9
 
-# Data Validation
-pydantic>=2.6,<3
+# Data Validation - Compatible with Gradio 4.36.1
+pydantic>=2.6,<2.8
 
 # PDF Processing
 PyMuPDF>=1.24,<1.25
