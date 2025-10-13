@@ -308,8 +308,12 @@ class FAISSVectorDatabase:
         self.paper_ids = []
         self.classifier = PaperTypeClassifier()
         
-        # Initialize Google Generative AI
-        genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+        # Initialize Google Generative AI - check both GEMINI_API_KEY and GOOGLE_API_KEY
+        api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+        if api_key:
+            genai.configure(api_key=api_key)
+        else:
+            logger.warning("No Gemini API key found - embeddings may not work correctly")
         
         # Check if FAISS is available
         if faiss is None:

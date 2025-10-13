@@ -56,10 +56,10 @@ class EnhancedResearchPipeline:
     def _init_agents(self):
         """Initialize literature and embedding agents with error handling"""
         try:
-            # Get API key
-            gemini_api_key = os.getenv('GOOGLE_API_KEY')
+            # Get API key - check both GEMINI_API_KEY and GOOGLE_API_KEY for backwards compatibility
+            gemini_api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
             if not gemini_api_key:
-                raise ValueError("GOOGLE_API_KEY not found in environment variables")
+                raise ValueError("GEMINI_API_KEY not found in environment variables. Please configure your API keys in the Settings tab.")
             
             # Initialize literature agent
             self.literature_agent = GeminiLiteratureDiscoveryAgent(gemini_api_key)
