@@ -332,7 +332,7 @@ Research-Assistant/
 - **Vector DB**: FAISS for high-performance similarity search and semantic matching
 - **Data Processing**: Pandas, NumPy for data manipulation and analysis
 - **Web Scraping**: BeautifulSoup, aiohttp for content extraction and async operations
-- **Database**: SQLite for metadata and session storage with MCP server architecture
+- **Database**: SQLite for metadata and session storage
 - **PDF Processing**: PyMuPDF for text extraction and document processing
 - **Environment Management**: python-dotenv for configuration management
 
