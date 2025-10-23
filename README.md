@@ -1,4 +1,4 @@
-# 🔬 Research Assistant
+# Research Assistant
 
 > A modern, AI-powered research discovery hub built with **Google Gemini 2.5 Flash** and **FAISS vector database**. This sophisticated tool provides intelligent paper discovery, iterative search augmentation, individual paper selection, and automated literature review generation through a beautiful **Gradio interface** with multi-agent coordination.
 
@@ -6,31 +6,31 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Gradio](https://img.shields.io/badge/Gradio-4.0+-orange.svg)](https://gradio.app/)
 
-## ✨ Features
+## Features
 
-### 🤖 AI-Powered Discovery
+### AI-Powered Discovery
 - Multi-source academic search (arXiv, CrossRef, OpenAlex, Google Scholar)
 - Google Gemini 2.5 Flash for intelligent relevance scoring
 - AI-enhanced query augmentation for better results
 
-### 📤 PDF Upload & Private Papers
+### PDF Upload & Private Papers
 - Upload your own research papers (PDF format)
 - Include unpublished work and internal documents
 - Automatic text extraction and metadata parsing
 - Seamless integration with search and review features
 
-### 🔍 Smart Search
+### Smart Search
 - FAISS vector database for semantic similarity search
 - Customizable search sources (choose databases or search only your uploads)
 - Advanced filters: publication date, paper type, citation count
 - Intelligent duplicate detection across sources
 
-### 📝 Automated Literature Reviews
+### Automated Literature Reviews
 - Multi-agent system for structured review generation
 - Export in Markdown format
 - Proper citations and academic formatting
 
-### 🎨 Modern Interface
+### Modern Interface
 - Beautiful Gradio web interface
 - Real-time progress tracking
 - Interactive paper selection (checkboxes for individual papers)
@@ -38,7 +38,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -76,15 +76,12 @@ The interface will open automatically at `http://localhost:7860`
 
 When you first launch the application, you'll see an **API Key Configuration Screen**:
 
-1. 🔑 Click the links to get your API keys
-2. ✍️ Paste them into the configuration form
-3. 💾 Click "Save & Continue"
-4. 🎉 Start using the Research Assistant!
+1. Click the links to get your API keys
+2. Paste them into the configuration form
+3. Click "Save & Continue"
+4. Start using the Research Assistant!
 
 Your API keys are stored securely in a local `.env` file and never shared with anyone except the respective API providers.
-
-📖 **Detailed Setup Guide**: See [docs/QUICK_START.md](docs/QUICK_START.md)  
-🔐 **API Key Documentation**: See [docs/API_KEY_SETUP.md](docs/API_KEY_SETUP.md)
 
 ### Verification
 
@@ -108,49 +105,49 @@ else:
 
 ---
 
-## 📚 Usage Guide
+## Usage Guide
 
 ### 1. Upload Your Own Papers (Optional)
 
 **Add your private research papers before searching:**
 
-1. Click **"📤 Upload Your Own Papers"** accordion at the top
+1. Click **"Upload Your Own Papers"** accordion at the top
 2. Select one or multiple PDF files from your computer
-3. Click **"📤 Upload & Parse Papers"** button
+3. Click **"Upload & Parse Papers"** button
 4. Papers are automatically parsed and added to the database
 
 **Perfect for:**
-- 🔒 Unpublished or private research
-- 📚 Papers you already have locally
-- 🏢 Internal company documents
-- 📖 Subscription-only papers you have access to
+- Unpublished or private research
+- Papers you already have locally
+- Internal company documents
+- Subscription-only papers you have access to
 
 ### 2. Search for Papers
 
 1. **Enter your research query** (e.g., "machine learning transformers")
 2. **Choose search sources** in Advanced Options:
-   - ✅ Google Scholar (requires SerpAPI key)
-   - ✅ arXiv (free)
-   - ✅ CrossRef (free)
-   - ✅ OpenAlex (free)
+   - Google Scholar (requires SerpAPI key)
+   - arXiv (free)
+   - CrossRef (free)
+   - OpenAlex (free)
    - Or uncheck all to search ONLY your uploaded papers
 3. **Configure filters** (optional):
    - Paper type (Journal/Conference/Review)
    - Publication date range (start/end year)
    - Minimum citation count
-4. **Click "🔍 Find Research Papers"**
+4. **Click "Find Research Papers"**
 5. **Select papers** using checkboxes (up to 20 displayed)
 6. **Save selected papers** or save all results
 
-### 2.5. Choosing Search Sources (NEW!)
+### 2.5. Choosing Search Sources
 
-In the **⚙️ Advanced Options** section, you can now select which databases to search:
+In the **Advanced Options** section, you can now select which databases to search:
 
 #### Available Sources:
-- ✅ **Google Scholar (SerpAPI)**: Most comprehensive, requires API key
-- ✅ **arXiv**: Latest preprints in STEM fields (free)
-- ✅ **CrossRef**: Peer-reviewed papers with DOIs (free)
-- ✅ **OpenAlex**: Open-access scholarly works (free)
+- **Google Scholar (SerpAPI)**: Most comprehensive, requires API key
+- **arXiv**: Latest preprints in STEM fields (free)
+- **CrossRef**: Peer-reviewed papers with DOIs (free)
+- **OpenAlex**: Open-access scholarly works (free)
 
 #### Usage Scenarios:
 ```
@@ -164,7 +161,6 @@ None Selected             → Search ONLY your uploaded papers!
 - Use fewer sources for faster searches
 - Uncheck all sources to search only your uploaded PDFs
 - Mix sources with uploads for hybrid search
-- See `SOURCE_SELECTION_QUICKSTART.md` for detailed guide
 
 ### 3. Advanced Features
 
@@ -177,17 +173,17 @@ None Selected             → Search ONLY your uploaded papers!
   - Use selected papers for augmented search
 
 #### Iterative Search & Query Augmentation
-- Use **"🔄 Find More Related Papers"** for Phase 2 augmented search
+- Use **"Find More Related Papers"** for Phase 2 augmented search
 - AI automatically generates expanded queries from selected paper content
 - Discovers papers you might have missed in initial search
 - Maintains session continuity across multiple iterations
 - Shows query evolution and augmentation tracking
 
 #### Literature Review Generation
-1. Navigate to the **📚 Literature Review** tab
+1. Navigate to the **Literature Review** tab
 2. Enter your **research topic** in the text field
 3. Set **maximum papers** to include (10-50 papers)
-4. Click **"📚 Generate Literature Review"**
+4. Click **"Generate Literature Review"**
 5. **Copy and save** the generated review in Markdown format
 
 #### Vector Search & Semantic Discovery
@@ -199,14 +195,14 @@ None Selected             → Search ONLY your uploaded papers!
 ### 4. Paper Management
 
 - **Selection Interface**: Interactive checkboxes for precise paper selection
-- **Organization**: Papers are automatically categorized by type (📖 Journal, 🎯 Conference, 📋 Review)
+- **Organization**: Papers are automatically categorized by type (Journal, Conference, Review)
 - **Batch Actions**: Save selected papers or all papers with dedicated buttons
 - **Export**: Download literature reviews and paper collections
 - **Sessions**: Research sessions are automatically tracked and managed
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### System Overview
 
@@ -227,20 +223,11 @@ None Selected             → Search ONLY your uploaded papers!
 │ - Similarity    │    │ - Vector Search │    │ - Writing Agent │
 │ - Metadata      │    │ - Session Store │    │ - Multi-Agent   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │   MCP Server    │
-                       │                 │
-                       │ - SQLite DB     │
-                       │ - Analytics     │
-                       │ - API Endpoints │
-                       └─────────────────┘
 ```
 
 ### Core Components
 
-#### 🎯 Control Agent (`src/agents/control_agent.py`)
+#### Control Agent (`src/agents/control_agent.py`)
 - **Enhanced Research Pipeline**: Orchestrates the entire research workflow with iterative capabilities
 - **Session Management**: Maintains state across research sessions with comprehensive tracking
 - **Agent Coordination**: Manages communication between different agents and components
@@ -248,28 +235,28 @@ None Selected             → Search ONLY your uploaded papers!
 - **Paper Selection Logic**: Manages individual paper selection and batch operations
 - **Query Augmentation**: Coordinates AI-powered keyword expansion from selected papers
 
-#### 📖 Literature Agent (`src/agents/literature_agent.py`)
+#### Literature Agent (`src/agents/literature_agent.py`)
 - **Multi-Source Discovery**: Searches arXiv, PubMed, and other academic sources with intelligent routing
 - **Gemini Integration**: Uses Gemini 2.5 Flash for relevance validation and confidence scoring
 - **Advanced Filtering**: Sophisticated search parameter management with date, citation, and type filters
 - **Real-time Processing**: Asynchronous paper processing and validation with progress tracking
 - **Database Integration**: Enhanced SQLite database with comprehensive paper metadata and analytics
 
-#### 🧠 Embedding Agent (`src/agents/embedding_agent.py`)
+#### Embedding Agent (`src/agents/embedding_agent.py`)
 - **FAISS Integration**: High-performance vector database operations with optimized indexing
 - **Google Embeddings**: State-of-the-art text embedding generation for semantic search
 - **Similarity Search**: Advanced semantic paper matching and discovery with configurable thresholds
 - **Metadata Management**: Comprehensive paper metadata storage with search session tracking
 - **Batch Processing**: Efficient batch operations for paper embedding and storage
 
-#### 📝 Literature Review Agents (`src/agents/literature_review_agents.py`)
+#### Literature Review Agents (`src/agents/literature_review_agents.py`)
 - **Manager Agent**: Maintains review structure and provides oversight with outline generation
 - **Writing Agent**: Generates coherent literature reviews with proper citations and formatting
 - **Multi-Agent Collaboration**: Coordinated review generation process with feedback loops
 - **Quality Assurance**: Built-in review validation and improvement with iterative refinement
 - **LangChain Integration**: Advanced prompt engineering and response optimization
 
-#### 🖥️ Gradio Interface (`src/apps/app_gradio_new.py`)
+#### Gradio Interface (`src/apps/app_gradio_new.py`)
 - **Modern Interface**: Beautiful, responsive Gradio-based web interface with professional styling
 - **Interactive Elements**: Individual paper checkboxes, progress bars, and real-time updates
 - **Multi-Tab Layout**: Organized workflow with separate tabs for search and literature review
@@ -277,15 +264,9 @@ None Selected             → Search ONLY your uploaded papers!
 - **Export Features**: Download capabilities for reviews and data with markdown support
 - **Session Continuity**: Maintains application state across interactions and iterations
 
-#### 🗄️ MCP Server (`mcp_server.py`)
-- **Database Management**: SQLite-based paper and session storage
-- **Analytics Tracking**: Performance metrics and usage statistics
-- **Data Persistence**: Long-term storage of research sessions
-- **API Integration**: RESTful endpoints for data access
-
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### Required Environment Variables
 
@@ -322,7 +303,7 @@ class PipelineConfig:
 
 ---
 
-## 🛠️ Development
+## Development
 
 ### Project Structure
 
@@ -337,8 +318,6 @@ Research-Assistant/
 │   │   └── literature_review_agents.py # Multi-agent review generation
 │   └── apps/                           # Application interfaces
 │       └── app_gradio_new.py           # Enhanced Gradio frontend
-├── config/                             # Configuration files
-│   └── mcp_server.py                   # MCP server and database management
 ├── data/                               # Data storage directory
 ├── requirements.txt                    # Python dependencies
 ├── .env                                # Environment configuration (create this)
@@ -353,7 +332,7 @@ Research-Assistant/
 - **Vector DB**: FAISS for high-performance similarity search and semantic matching
 - **Data Processing**: Pandas, NumPy for data manipulation and analysis
 - **Web Scraping**: BeautifulSoup, aiohttp for content extraction and async operations
-- **Database**: SQLite for metadata and session storage with MCP server architecture
+- **Database**: SQLite for metadata and session storage
 - **PDF Processing**: PyMuPDF for text extraction and document processing
 - **Environment Management**: python-dotenv for configuration management
 
@@ -376,7 +355,7 @@ Research-Assistant/
 
 ---
 
-## 🔍 API Reference
+## API Reference
 
 ### Pipeline Configuration
 
@@ -418,7 +397,7 @@ score = await validator.validate_paper_async(
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -462,14 +441,12 @@ pip install faiss-gpu
 - **Batch Processing**: Process papers in smaller batches using individual selection
 - **Caching**: Enable result caching for repeated queries through session management
 - **Parallel Processing**: Increase concurrent request limits in configuration
-- **Database Indexing**: Optimize SQLite indexes for large datasets in MCP server
 - **Iterative Approach**: Use Phase 2 augmented search instead of large initial searches
 
 #### Memory Management
 - **Vector Database**: Use memory mapping for large FAISS indexes
 - **Garbage Collection**: Explicit cleanup of large objects between searches
 - **Streaming**: Process papers in streaming fashion for large sets
-- **Session Cleanup**: Use database cleanup functionality between major searches
 
 #### Interface Optimization
 - **Progressive Loading**: Papers load progressively with real-time updates
@@ -478,24 +455,23 @@ pip install faiss-gpu
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Google Gemini Team** for the powerful Gemini 2.5 Flash model and advanced AI capabilities
 - **FAISS Team** at Facebook AI Research for vector search capabilities and optimization  
 - **LangChain Community** for the excellent AI framework and multi-agent coordination
 - **Gradio Team** for the amazing web interface framework and interactive components
 - **Academic Community** for making research papers accessible and promoting open science
-- **MCP (Model Context Protocol)** for standardized AI-database integration patterns
 
 ---
 
-## 📞 Support
+## Support
 
 - **Issues**: [GitHub Issues](https://github.com/BurntDosa/Research-Assistant/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/BurntDosa/Research-Assistant/discussions)
@@ -503,14 +479,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 🔐 Security
+**Happy Researching!**
 
-- **Security Policy**: See [SECURITY.md](SECURITY.md) for security best practices and vulnerability reporting
-- **API Key Protection**: Your API keys are stored locally in `.env` files and never committed to version control
-- **Important**: If you received a notification about an exposed API key, see [API_KEY_INCIDENT.md](API_KEY_INCIDENT.md) for immediate action steps
-
----
-
-**Happy Researching! 🎓**
-
-*Built with ❤️ for the research community*
+*Built with care for the research community*
