@@ -8,6 +8,7 @@ using a Manager Agent and a Writing Agent that collaborate through LangChain.
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime
+import os
 
 from langchain.agents import Tool
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -45,8 +46,15 @@ class ManagerAgent:
     """
     def __init__(self, vector_db: FAISSVectorDatabase):
         self.vector_db = vector_db
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash",
-                                         temperature=0.3)
+        # Get API key with fallback pattern
+        api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+        if not api_key:
+            logger.warning("No API key found in environment. Please configure GEMINI_API_KEY.")
+        self.llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            temperature=0.3,
+            google_api_key=api_key
+        )
         self.current_outline: Optional[ReviewOutline] = None
         
     def create_initial_outline(self, topic: str, papers: List[EmbeddedPaper]) -> ReviewOutline:
@@ -164,8 +172,15 @@ class WritingAgent:
     """
     def __init__(self, vector_db: FAISSVectorDatabase):
         self.vector_db = vector_db
-        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash",
-                                         temperature=0.7)
+        # Get API key with fallback pattern
+        api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+        if not api_key:
+            logger.warning("No API key found in environment. Please configure GEMINI_API_KEY.")
+        self.llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            temperature=0.7,
+            google_api_key=api_key
+        )
         self.citation_style = "APA"
         
     def write_section(self, section_title: str, 
@@ -250,8 +265,17 @@ class LiteratureReviewCoordinator:
             else:
                 self.vector_db = FAISSVectorDatabase(vector_db_path)
             
+            # Get API key with fallback pattern
+            api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+            if not api_key:
+                logger.warning("No API key found in environment. Please configure GEMINI_API_KEY.")
+            
             # Initialize LLM directly for simplified approach
-            self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.7)
+            self.llm = ChatGoogleGenerativeAI(
+                model="gemini-2.5-flash",
+                temperature=0.7,
+                google_api_key=api_key
+            )
             logger.info("Literature Review Coordinator initialized successfully")
             
         except Exception as e:

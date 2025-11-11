@@ -697,11 +697,13 @@ class EnhancedGradioResearchApp:
         timeline_months: int,
         # Computational resources
         has_gpu: bool,
+        gpu_type: str,
+        gpu_custom: str,
         has_cloud: bool,
         cpu_cores: int,
         ram_gb: int,
         # Funding
-        budget_usd: int,
+        budget_inr: int,
         has_grant: bool,
         # Time
         hours_per_week: int,
@@ -735,16 +737,25 @@ class EnhancedGradioResearchApp:
             # Parse skills list
             skills = [s.strip() for s in skills_list.split(',') if s.strip()]
             
+            # Determine GPU details
+            gpu_info = None
+            if has_gpu:
+                if gpu_type == "Other" and gpu_custom:
+                    gpu_info = gpu_custom
+                elif gpu_type != "Other":
+                    gpu_info = gpu_type
+            
             # Build resource inventory
             resources = {
                 'computational': {
                     'has_gpu': has_gpu,
+                    'gpu_type': gpu_info,
                     'has_cloud_access': has_cloud,
                     'cpu_cores': cpu_cores,
                     'ram_gb': ram_gb
                 },
                 'funding': {
-                    'budget_usd': budget_usd,
+                    'budget_inr': budget_inr,
                     'has_grant': has_grant,
                     'duration_months': timeline_months
                 },
@@ -1945,13 +1956,38 @@ DO NOT include abstract, references, or title - only body sections.
                         
                         gr.Markdown("#### 💻 Computational Resources")
                         feas_has_gpu = gr.Checkbox(label="Has GPU Access", value=False)
+                        feas_gpu_type = gr.Dropdown(
+                            label="GPU Type",
+                            choices=[
+                                "NVIDIA RTX 4090",
+                                "NVIDIA RTX 4080",
+                                "NVIDIA RTX 3090",
+                                "NVIDIA A100 (40GB)",
+                                "NVIDIA A100 (80GB)",
+                                "NVIDIA V100 (32GB)",
+                                "NVIDIA RTX A6000",
+                                "NVIDIA Tesla T4",
+                                "NVIDIA GTX 1080 Ti",
+                                "NVIDIA RTX 2080 Ti",
+                                "Other"
+                            ],
+                            value="NVIDIA RTX 3090",
+                            visible=False,
+                            interactive=True
+                        )
+                        feas_gpu_custom = gr.Textbox(
+                            label="Custom GPU Details (Model, VRAM, Quantity)",
+                            placeholder="e.g., AMD MI100 32GB x2",
+                            visible=False,
+                            lines=2
+                        )
                         feas_has_cloud = gr.Checkbox(label="Has Cloud Computing Access", value=False)
                         with gr.Row():
                             feas_cpu_cores = gr.Slider(label="CPU Cores", minimum=1, maximum=64, value=8, step=1)
                             feas_ram_gb = gr.Slider(label="RAM (GB)", minimum=1, maximum=256, value=16, step=1)
                         
                         gr.Markdown("#### 💰 Funding")
-                        feas_budget = gr.Number(label="Budget (USD)", value=0, precision=0)
+                        feas_budget = gr.Number(label="Budget (INR)", value=0, precision=0)
                         feas_has_grant = gr.Checkbox(label="Has Research Grant", value=False)
                     
                     with gr.Column(scale=1):
@@ -1974,7 +2010,7 @@ DO NOT include abstract, references, or title - only body sections.
                         feas_data_type = gr.Textbox(
                             label="Data Type",
                             placeholder="e.g., public dataset, proprietary, needs collection",
-                            value="unknown"
+                            value=""
                         )
                         
                         gr.Markdown("#### 🔬 Equipment & Expertise")
@@ -2314,6 +2350,18 @@ DO NOT include abstract, references, or title - only body sections.
             )
             
             # Feasibility assessment
+            feas_has_gpu.change(
+                fn=lambda x: (gr.update(visible=x), gr.update(visible=False)),
+                inputs=[feas_has_gpu],
+                outputs=[feas_gpu_type, feas_gpu_custom]
+            )
+            
+            feas_gpu_type.change(
+                fn=lambda x: gr.update(visible=(x == "Other")),
+                inputs=[feas_gpu_type],
+                outputs=[feas_gpu_custom]
+            )
+            
             feas_assess_btn.click(
                 fn=self.assess_feasibility,
                 inputs=[
@@ -2321,6 +2369,8 @@ DO NOT include abstract, references, or title - only body sections.
                     feas_description,
                     feas_timeline,
                     feas_has_gpu,
+                    feas_gpu_type,
+                    feas_gpu_custom,
                     feas_has_cloud,
                     feas_cpu_cores,
                     feas_ram_gb,

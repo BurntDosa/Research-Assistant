@@ -193,19 +193,20 @@ class FeasibilityAssessmentAgent:
         """Check funding availability"""
         funding = resources.get('funding', {})
         
-        budget_usd = funding.get('budget_usd', 0)
+        budget_inr = funding.get('budget_inr', 0)
         has_grant = funding.get('has_grant', False)
         funding_duration_months = funding.get('duration_months', 0)
         
-        if has_grant and budget_usd >= 50000:
+        # INR thresholds (approximately 83 INR = 1 USD for reference)
+        if has_grant and budget_inr >= 4150000:  # ~50k USD equivalent
             status = 'sufficient'
-            message = f"Strong funding support (${budget_usd:,})"
-        elif budget_usd >= 10000:
+            message = f"Strong funding support (₹{budget_inr:,})"
+        elif budget_inr >= 830000:  # ~10k USD equivalent
             status = 'sufficient'
-            message = f"Adequate funding (${budget_usd:,})"
-        elif budget_usd >= 5000:
+            message = f"Adequate funding (₹{budget_inr:,})"
+        elif budget_inr >= 415000:  # ~5k USD equivalent
             status = 'limited'
-            message = f"Limited funding (${budget_usd:,}), plan carefully"
+            message = f"Limited funding (₹{budget_inr:,}), plan carefully"
         else:
             status = 'insufficient'
             message = "Insufficient funding, seek additional sources"
@@ -509,7 +510,7 @@ if __name__ == "__main__":
             'ram_gb': 32
         },
         'funding': {
-            'budget_usd': 15000,
+            'budget_inr': 1245000,  # ~15k USD equivalent
             'has_grant': False,
             'duration_months': 12
         },

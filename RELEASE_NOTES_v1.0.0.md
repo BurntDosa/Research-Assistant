@@ -18,7 +18,7 @@ This is the **first stable release** of Research Assistant - a comprehensive AI-
 
 #### 📄 PDF Upload & Private Papers
 - **Local PDF Upload**: Add your own research papers in PDF format
-- **Automatic Parsing**: Intelligent extraction of metadata and content
+- **Automatic Parsing**: envIntelligent extraction of metadata and content
 - **Batch Processing**: Handle multiple PDFs simultaneously
 - **Private Papers**: Include unpublished work and internal documents
 
@@ -38,8 +38,6 @@ This is the **first stable release** of Research Assistant - a comprehensive AI-
 - **Interactive Selection**: Precise paper selection (up to 20 papers)
 - **Real-time Progress**: Live updates during search
 - **Multi-Tab Workflow**: Organized research process
-
-### 🔒 Security & Privacy
 
 ### 🔒 Security & Privacy
 
